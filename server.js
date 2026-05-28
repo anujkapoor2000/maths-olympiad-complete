@@ -216,13 +216,14 @@ app.post('/api/progress/update', async (req, res) => {
     await pool.query(
       `INSERT INTO daily_history (user_id, date, problems_solved, coins_earned)
        VALUES ($1, $2, 1, $3)
-       ON CONFLICT (user_id, date) 
-       DO UPDATE SET problems_solved = problems_solved + 1, coins_earned = coins_earned + $3`,
+       ON CONFLICT (user_id, date)
+       DO UPDATE SET problems_solved = daily_history.problems_solved + 1, coins_earned = daily_history.coins_earned + $3`,
       [user_id, today, coinsEarned]
     );
 
     res.json(progress.rows[0]);
   } catch (err) {
+    console.error('Error updating progress:', err);
     res.status(400).json({ error: err.message });
   }
 });

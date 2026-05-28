@@ -39,17 +39,19 @@ export default function App() {
     setTimeRemaining(300);
   };
 
-  // Handle login
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  // Handle login. Accepts optional explicit credentials (used by the demo buttons)
+  // so we never depend on not-yet-flushed loginForm state.
+  const handleLogin = async (e, creds) => {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+    const credentials = creds || loginForm;
     try {
-      const response = await axios.post(`${API_URL}/api/auth/login`, loginForm);
+      const response = await axios.post(`${API_URL}/api/auth/login`, credentials);
       setCurrentUser(response.data);
       setProgress(response.data.progress);
       setPage(response.data.type === 'child' ? 'challenge' : 'parentDash');
       setLoginForm({ username: '', password: '' });
     } catch (err) {
-      alert('Login failed: ' + err.response?.data?.error);
+      alert('Login failed: ' + (err.response?.data?.error || err.message));
     }
   };
 
@@ -95,9 +97,10 @@ export default function App() {
     return () => clearInterval(interval);
   }, [timerRunning]);
 
-  // Demo accounts
+  // Demo accounts: fill the form and submit immediately with explicit credentials.
   const demoLogin = (username, password) => {
     setLoginForm({ username, password });
+    handleLogin(null, { username, password });
   };
 
   const formatTime = (seconds) => {
@@ -133,21 +136,15 @@ export default function App() {
 
           <div className="demo-accounts">
             <h3>Demo Accounts</h3>
-            <button 
+            <button
               className="demo-btn"
-              onClick={() => {
-                demoLogin('child', 'child123');
-                setTimeout(() => handleLogin(new Event('submit')), 100);
-              }}
+              onClick={() => demoLogin('child', 'child123')}
             >
               👦 Child (child/child123)
             </button>
-            <button 
+            <button
               className="demo-btn"
-              onClick={() => {
-                demoLogin('parent1', 'parent123');
-                setTimeout(() => handleLogin(new Event('submit')), 100);
-              }}
+              onClick={() => demoLogin('parent1', 'parent123')}
             >
               👨 Parent 1 (parent1/parent123)
             </button>

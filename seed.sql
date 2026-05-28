@@ -69,3 +69,17 @@ INSERT INTO questions (difficulty, type, text, answer, solution, source) VALUES
 ('year9', 'multipleChoice', 'A right triangle has sides 5 and 12. Hypotenuse?', '13', 'c² = 25 + 144 = 169, c = 13', 'Bank'),
 ('year9', 'shortAnswer', 'Solve: x² - 2x - 8 = 0', '4, -2', '(x - 4)(x + 2) = 0', 'Bank'),
 ('year9', 'shortAnswer', 'What is the sum of angles in a quadrilateral?', '360', 'A quadrilateral has 4 angles summing to 360°', 'Bank');
+
+-- Demo accounts (idempotent). The app also auto-creates these on startup,
+-- so running this is optional.
+INSERT INTO users (username, password, name, type) VALUES
+('child', 'child123', 'Child Account', 'child'),
+('parent1', 'parent123', 'Parent 1', 'parent'),
+('parent2', 'parent456', 'Parent 2', 'parent')
+ON CONFLICT (username) DO NOTHING;
+
+-- Progress records for the demo accounts.
+INSERT INTO user_progress (user_id)
+SELECT id FROM users
+WHERE username IN ('child', 'parent1', 'parent2')
+  AND id NOT IN (SELECT user_id FROM user_progress WHERE user_id IS NOT NULL);

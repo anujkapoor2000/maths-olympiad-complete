@@ -91,6 +91,29 @@ async function initializeDB() {
       );
     `);
 
+    // Seed the demo accounts (idempotent) so the demo login buttons work out of
+    // the box. seed.sql only loads questions, not users.
+    const demoUsers = [
+      ['child', 'child123', 'Child Account', 'child'],
+      ['parent1', 'parent123', 'Parent 1', 'parent'],
+      ['parent2', 'parent456', 'Parent 2', 'parent'],
+    ];
+    for (const [username, password, name, type] of demoUsers) {
+      const inserted = await pool.query(
+        `INSERT INTO users (username, password, name, type)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (username) DO NOTHING
+         RETURNING id`,
+        [username, password, name, type]
+      );
+      if (inserted.rows[0]) {
+        await pool.query(
+          'INSERT INTO user_progress (user_id) VALUES ($1)',
+          [inserted.rows[0].id]
+        );
+      }
+    }
+
     console.log('Database tables initialized');
   } catch (err) {
     console.error('Error initializing database:', err);

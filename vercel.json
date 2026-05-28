@@ -4,8 +4,6 @@
   "devCommand": "node server.js",
   "installCommand": "npm ci",
   "env": {
-    "DATABASE_URL": "@database_url",
-    "ANTHROPIC_API_KEY": "@anthropic_api_key",
     "NODE_ENV": "production"
   },
   "functions": {

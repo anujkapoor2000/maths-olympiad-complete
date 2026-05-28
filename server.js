@@ -26,6 +26,21 @@ pool.query('SELECT NOW()', (err, result) => {
   }
 });
 
+// Kick off schema creation + demo seeding once per instance. (initializeDB is a
+// hoisted function declaration, so it can be invoked before its definition.)
+const dbReady = initializeDB();
+
+// Gate every request until the database is ready. On serverless cold starts the
+// handler would otherwise race the (async) seeding and return 401s / empty data.
+app.use(async (req, res, next) => {
+  try {
+    await dbReady;
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Initialize database tables
 async function initializeDB() {
   try {
@@ -251,8 +266,7 @@ app.post('/api/papers/upload', upload.single('file'), async (req, res) => {
 // On Vercel the SPA is served from the CDN and this function only handles /api/*.
 app.use(express.static(path.join(__dirname, 'dist')));
 
-// Ensure tables exist (idempotent). Runs on cold start in serverless environments.
-initializeDB();
+// (Schema creation + demo seeding is kicked off above as `dbReady`.)
 
 // Only start a long-lived listener when executed directly (local dev / non-serverless
 // hosts). On Vercel the exported app is invoked per-request as a serverless function.

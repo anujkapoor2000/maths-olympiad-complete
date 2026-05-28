@@ -1,24 +1,16 @@
 {
-  "buildCommand": "npm install",
-  "outputDirectory": ".",
-  "devCommand": "node server.js",
-  "installCommand": "npm ci",
-  "env": {
-    "NODE_ENV": "production"
-  },
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "vite build",
+  "outputDirectory": "dist",
   "functions": {
-    "api/**/*.js": {
+    "api/[...path].js": {
       "maxDuration": 60
     }
   },
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/public/$1"
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
     }
   ]
 }

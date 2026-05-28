@@ -224,13 +224,20 @@ app.post('/api/papers/upload', upload.single('file'), async (req, res) => {
   }
 });
 
-// Serve static files
-app.use(express.static(path.join(__dirname, 'public')));
+// Serve the built frontend when running as a standalone server.
+// On Vercel the SPA is served from the CDN and this function only handles /api/*.
+app.use(express.static(path.join(__dirname, 'dist')));
 
-// Initialize database and start server
-initializeDB().then(() => {
+// Ensure tables exist (idempotent). Runs on cold start in serverless environments.
+initializeDB();
+
+// Only start a long-lived listener when executed directly (local dev / non-serverless
+// hosts). On Vercel the exported app is invoked per-request as a serverless function.
+if (require.main === module) {
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
-});
+}
+
+module.exports = app;

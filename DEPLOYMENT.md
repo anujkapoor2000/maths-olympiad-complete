@@ -14,45 +14,15 @@
 
 ### Step 2: Prepare Your Code for Vercel
 
-Create these files in your project root:
+This repository is **already configured for Vercel** — no manual file creation is needed:
 
-**vercel.json**
-```json
-{
-  "buildCommand": "npm install && npm run build",
-  "outputDirectory": ".",
-  "env": {
-    "DATABASE_URL": "@database_url",
-    "PORT": "3000",
-    "NODE_ENV": "production"
-  }
-}
-```
+- `vercel.json` builds the Vite SPA (`vite build` → `dist/`) and rewrites all non-`/api`
+  routes to `index.html` for client-side routing.
+- `api/[...path].js` is a catch-all serverless function that delegates every `/api/*`
+  request to the Express app in `server.js`.
+- The React frontend lives in `src/` with `index.html` as the Vite entry point.
 
-**api/questions.js** (Vercel serverless function)
-```javascript
-import { Pool } from 'pg';
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
-
-export default async function handler(req, res) {
-  if (req.method !== 'GET') return res.status(405).end();
-  
-  const { difficulty } = req.query;
-  try {
-    const result = await pool.query(
-      'SELECT * FROM questions WHERE difficulty = $1 ORDER BY RANDOM() LIMIT 1',
-      [difficulty]
-    );
-    res.json(result.rows[0] || null);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-}
-```
+You only need to set the environment variables (Step 3) and seed the database (Step 4).
 
 ### Step 3: Deploy to Vercel
 

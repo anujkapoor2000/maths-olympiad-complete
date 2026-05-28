@@ -70,19 +70,34 @@ Login: child / child123
 
 ```
 maths-app/
-├── server.js                 # Express API
-├── package.json              # Dependencies
-├── seed.sql                  # 60 questions + schema
-├── DEPLOYMENT.md             # Full deployment guide
-├── public/
+├── server.js                 # Express API (exported as the serverless app)
+├── api/
+│   └── [...path].js         # Vercel catch-all that delegates /api/* to server.js
+├── index.html                # Vite entry point
+├── vite.config.js            # Vite build + dev proxy config
+├── src/
+│   ├── main.jsx             # React entry
 │   ├── App.jsx              # React frontend
 │   └── App.css              # Styling
-├── api/
-│   ├── questions.js         # Vercel serverless
-│   ├── progress.js
-│   └── auth.js
-└── .env.example             # Configuration template
+├── vercel.json               # Vercel build + SPA rewrite config
+├── package.json              # Dependencies
+├── seed.sql                  # 60 questions + schema
+└── DEPLOYMENT.md             # Full deployment guide
 ```
+
+## Local Development
+
+```bash
+npm install
+
+# Terminal 1 — Express API (needs DATABASE_URL in your environment or a .env file)
+npm run server
+
+# Terminal 2 — Vite dev server (proxies /api to the Express server on :3000)
+npm run dev
+```
+
+Production build: `npm run build` outputs the static SPA to `dist/`.
 
 ## Questions Bank
 

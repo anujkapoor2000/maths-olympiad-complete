@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
+import { formatTime, parseOptions, gradeAnswer } from './utils';
 
 // In production the API is served from the same origin (Vercel rewrites /api/* to the
 // serverless function). In local dev the Vite proxy forwards /api to the Express server.
@@ -59,9 +60,8 @@ export default function App() {
   const handleSubmitAnswer = async () => {
     if (!currentQuestion || answered) return;
 
-    const expected = (currentQuestion.answer ?? '').toString().toLowerCase().trim();
-    const correct = userAnswer.toLowerCase().trim() === expected;
-    
+    const correct = gradeAnswer(userAnswer, currentQuestion.answer);
+
     try {
       await axios.post(`${API_URL}/api/progress/update`, {
         user_id: currentUser.id,
@@ -102,24 +102,6 @@ export default function App() {
   const demoLogin = (username, password) => {
     setLoginForm({ username, password });
     handleLogin(null, { username, password });
-  };
-
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  // Safely parse multiple-choice options. Returns a non-empty array or null
-  // (many bank questions are marked multipleChoice but have no options stored).
-  const parseOptions = (raw) => {
-    if (!raw) return null;
-    try {
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
-    } catch {
-      return null;
-    }
   };
 
   if (!currentUser) {

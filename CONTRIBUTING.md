@@ -54,7 +54,30 @@ Server runs on `http://localhost:3000`
 
 ## Testing Your Changes
 
+### Automated tests
+
+The project uses [Vitest](https://vitest.dev/) (with [Supertest](https://github.com/ladjs/supertest)
+for the API). Run them with:
+
+```bash
+npm test            # run the suite once
+npm run test:watch  # re-run on change
+npm run test:coverage
+```
+
+Tests live in `test/`:
+- `scoring.test.js` / `utils.test.js` — pure logic (coin scoring, answer grading,
+  option parsing, time formatting) extracted into `lib/scoring.js` and `src/utils.js`.
+- `api.test.js` — Express routes exercised via Supertest. `server.js` exports a
+  `createApp(pool)` factory so tests inject a fake pg pool — no real database needed.
+
+When adding logic, prefer extracting it into a small, pure, testable function and
+covering it. Please add or update tests for any behaviour change.
+
+### Manual checks
+
 Before submitting a PR:
+- [ ] `npm test` passes
 - [ ] Test login with both child and parent accounts
 - [ ] Verify questions load randomly
 - [ ] Check progress saves to database

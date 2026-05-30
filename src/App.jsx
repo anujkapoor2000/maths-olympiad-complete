@@ -498,6 +498,12 @@ export default function App() {
                   </div>
                   <h2>{currentQuestion.text}</h2>
 
+                  {currentQuestion.image_url && (
+                    <div className="question-image">
+                      <img src={currentQuestion.image_url} alt="Question diagram" />
+                    </div>
+                  )}
+
                   {!answered ? (
                     <div className="answer-section">
                       {parseOptions(currentQuestion.options) ? (

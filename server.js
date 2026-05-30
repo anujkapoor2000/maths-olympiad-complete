@@ -77,6 +77,41 @@ async function initializeDB() {
     `);
 
     await pool.query(`
+      ALTER TABLE questions ADD COLUMN IF NOT EXISTS image_url VARCHAR(500);
+    `);
+
+    // Patch image URLs onto already-seeded Kangaroo questions (idempotent)
+    const imagePatches = [
+      [1, '/images/jk2025/q1.png'],
+      [2, '/images/jk2025/q2.png'],
+      [3, '/images/jk2025/q3.png'],
+      [4, '/images/jk2025/q4.png'],
+      [5, '/images/jk2025/q5.png'],
+      [6, '/images/jk2025/q6.png'],
+      [8, '/images/jk2025/q8.png'],
+      [14, '/images/jk2025/q14.png'],
+      [16, '/images/jk2025/q16.png'],
+      [18, '/images/jk2025/q18.png'],
+      [20, '/images/jk2025/q20.png'],
+      [22, '/images/jk2025/q22.png'],
+    ];
+    // Match by question position within the Kangaroo source
+    const kangarooIds = await pool.query(
+      "SELECT id FROM questions WHERE source = 'Junior Kangaroo 2025' ORDER BY id ASC"
+    );
+    if (kangarooIds.rows.length === 25) {
+      for (const [qNum, imgUrl] of imagePatches) {
+        const row = kangarooIds.rows[qNum - 1];
+        if (row) {
+          await pool.query(
+            'UPDATE questions SET image_url = $1 WHERE id = $2 AND image_url IS NULL',
+            [imgUrl, row.id]
+          );
+        }
+      }
+    }
+
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS user_progress (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id),
@@ -881,46 +916,52 @@ async function initializeDB() {
     if (parseInt(kangarooCheck.rows[0].count) === 0) {
       const kangarooQuestions = [
         {
-          text: "Which of the following traffic signs has the greatest number of lines of symmetry? A: right-arrow sign, B: no U-turn sign, C: no-entry (horizontal bar) sign, D: right-curve sign, E: car sign.",
+          text: "Which of the following traffic signs has the greatest number of lines of symmetry?",
           options: ["A (right arrow)","B (no U-turn)","C (no entry bar)","D (right curve)","E (car)"],
           answer: "C (no entry bar)",
           solution: "The no-entry sign (horizontal bar in circle) has two lines of symmetry — horizontal and vertical. The arrow and car signs have one line each; the U-turn and curve signs have none. So C has the most.",
-          subject: "geometry"
+          subject: "geometry",
+          image_url: "/images/jk2025/q1.png"
         },
         {
           text: "Joseph draws a square with side-length 10 cm. He joins the midpoints of the sides to make a smaller square inside it. What is the area, in cm², of the smaller square?",
           options: ["10","20","30","40","50"],
           answer: "50",
           solution: "The vertices of the smaller square are at the midpoints of the larger square's sides, each 5 cm from a corner. Each of the four corner right-angled triangles has area ½×5×5 = 12.5 cm². Area of smaller square = 100 − 4×12.5 = 50 cm².",
-          subject: "geometry"
+          subject: "geometry",
+          image_url: "/images/jk2025/q2.png"
         },
         {
-          text: "Millie's mother wants a knife on the right-hand side and a fork on the left-hand side of each plate. Starting from the arrangement shown (knife left, fork right for all plates), what is the smallest number of knife–fork swaps needed?",
+          text: "Millie's mother wants a knife on the right-hand side and a fork on the left-hand side of each plate. Starting from the arrangement shown, what is the smallest number of knife–fork swaps needed?",
           options: ["1","2","3","5","6"],
           answer: "2",
           solution: "There are 4 items in the wrong place. Each swap fixes 2 items, so the minimum number of swaps is 4 ÷ 2 = 2.",
-          subject: "logic"
+          subject: "logic",
+          image_url: "/images/jk2025/q3.png"
         },
         {
           text: "On the left side of a room, Jia and Lottie are sleeping facing each other with heads on their pillows. On the right side, Anaya and Isla are sleeping back to back with heads on their pillows. How many of the four girls are sleeping with their right ear on their pillow?",
           options: ["0","1","2","3","4"],
           answer: "2",
           solution: "Jia and Lottie face each other, so exactly one has her right ear down. Anaya and Isla face away from each other, so exactly one has her right ear down. Total = 2.",
-          subject: "logic"
+          subject: "logic",
+          image_url: "/images/jk2025/q4.png"
         },
         {
-          text: "A piece of paper with squares labelled P, Q (top row) and R, S, T (bottom row) is folded along the dotted lines to make an open box placed on a table with the top open. What letter is on the face that is on the table?",
+          text: "The piece of paper shown is folded along the dotted lines to make an open box placed on a table with the top open. What letter is on the face that is on the table?",
           options: ["P","Q","R","S","T"],
           answer: "Q",
           solution: "When folded: P is opposite S, R is opposite T. Q has no face opposite it, so Q ends up on the table.",
-          subject: "geometry"
+          subject: "geometry",
+          image_url: "/images/jk2025/q5.png"
         },
         {
-          text: "Two identical squares of paper are glued together (overlapping at a corner). Which of the following shapes CANNOT be formed? A: house shape (square + triangle roof), B: star/octagon shape, C: rectangle, D: L-shape, E: arrow pointing down.",
+          text: "Which of the following figures cannot be formed by gluing these two identical squares of paper together?",
           options: ["A (house/triangle top)","B (star shape)","C (rectangle)","D (L-shape)","E (arrow down)"],
           answer: "A (house/triangle top)",
           solution: "The triangle at the top of shape A would need to be equilateral, but the angle at the top is 90° (interior angle of a square), not 60°. So shape A cannot be formed. The others can be made by overlapping the two squares in various ways.",
-          subject: "geometry"
+          subject: "geometry",
+          image_url: "/images/jk2025/q6.png"
         },
         {
           text: "2025 is a perfect square (45²). How many distinct prime numbers divide exactly into 2025?",
@@ -934,7 +975,8 @@ async function initializeDB() {
           options: ["V","W","X","Y","Z"],
           answer: "X",
           solution: "After the first nuts are collected, the remaining nut is between X, Y and Z but squirrel X is closest to it, so X collects two nuts.",
-          subject: "logic"
+          subject: "logic",
+          image_url: "/images/jk2025/q8.png"
         },
         {
           text: "There are 30 students in a class. They sit in pairs so that each boy is sitting next to a girl, and exactly half the girls are sitting next to a boy. How many boys are there?",
@@ -976,7 +1018,8 @@ async function initializeDB() {
           options: ["50 cm","45 cm","40 cm","35 cm","33 cm"],
           answer: "40 cm",
           solution: "Each added rectangle increases the total perimeter by half its own perimeter. The three rectangles add ½ × 20 = 10 cm. Total perimeter = 30 + 10 = 40 cm.",
-          subject: "geometry"
+          subject: "geometry",
+          image_url: "/images/jk2025/q14.png"
         },
         {
           text: "Run Ze writes all integers where: the first digit is 1, each following digit is at least as large as the one before it, and the digit sum is 5. How many such integers does he write?",
@@ -986,11 +1029,12 @@ async function initializeDB() {
           subject: "logic"
         },
         {
-          text: "An L-shaped tetromino (made of 4 unit squares in an L shape) is to be cut from a 5×5 grid of 25 unit squares. What is the largest number of such pieces that can be cut out?",
+          text: "What is the largest number of shapes of this form (an L-tetromino made of 4 squares) that can be cut out from a 5×5 square?",
           options: ["2","4","5","6","7"],
           answer: "6",
           solution: "Each piece covers 4 squares. Since 25 = 4×6+1, at most 6 pieces could fit, and it is possible to arrange 6 non-overlapping L-tetrominoes in the 5×5 grid.",
-          subject: "logic"
+          subject: "logic",
+          image_url: "/images/jk2025/q16.png"
         },
         {
           text: "Luigi has some square tables and chairs. Arranging tables singly with 4 chairs each leaves him 6 chairs short. Arranging tables in pairs with 6 chairs per pair leaves 4 chairs over. How many tables did he receive?",
@@ -1000,11 +1044,12 @@ async function initializeDB() {
           subject: "algebra"
         },
         {
-          text: "Lily wants to make a large triangle from small triangular tiles. She has already placed 7 tiles. What is the smallest number of additional tiles she needs to complete a large triangle?",
+          text: "Lily wants to make a large triangle from small triangular tiles. She has already put some tiles together as shown. What is the smallest number of small tiles she now needs to complete a large triangle?",
           options: ["5","9","12","15","18"],
           answer: "9",
           solution: "The existing shape fits inside a large triangle whose rows contain 7+5+3+1 = 16 tiles. Since 7 tiles are placed, she needs 16 − 7 = 9 more tiles.",
-          subject: "geometry"
+          subject: "geometry",
+          image_url: "/images/jk2025/q18.png"
         },
         {
           text: "Three vertices of rectangle PQRS are at P(1,1), Q(7,4) and R(5,8). What are the co-ordinates of S?",
@@ -1014,11 +1059,12 @@ async function initializeDB() {
           subject: "geometry"
         },
         {
-          text: "A large cube is built from 8 small cubes, some painted black and some white. Five faces of the large cube are shown (with 2,1,1,1,1 black squares visible). What does the sixth face look like?",
+          text: "A large cube was built from eight equally-sized small cubes, some painted black and some painted white. Five of the faces of the large cube are shown in the diagram. What does the sixth face of the large cube look like?",
           options: ["All white (0 black squares)","1 black square top-left","1 black square bottom-right","2 black squares diagonal","2 black squares same side"],
           answer: "All white (0 black squares)",
           solution: "Each small cube has 3 faces on the large cube. Total visible black squares must be a multiple of 3. Five faces show 2+1+1+1+1 = 6 black squares. The sixth face must add 0 black squares (6+0=6, a multiple of 3). So the sixth face is all white.",
-          subject: "logic"
+          subject: "logic",
+          image_url: "/images/jk2025/q20.png"
         },
         {
           text: "A rectangular swimming pool of length 20 m is surrounded on all four sides by a path 2 m wide. The area of the path equals the area of the pool. What is the width, in metres, of the pool?",
@@ -1028,11 +1074,12 @@ async function initializeDB() {
           subject: "algebra"
         },
         {
-          text: "Kirsten wrote numbers in five of ten circles around a pentagon: 7, 3, 1, 6, 2 (as shown). She fills the remaining five circles so that the sum along each side of the pentagon is equal. What number goes in the circle marked X (between 7 and 2)?",
+          text: "Kirsten wrote numbers in five of ten circles arranged around a pentagon, as shown. She wants to write a number in each of the remaining five circles so that the sums of the three numbers along each side of the pentagon are equal. Which number should she write in the circle marked X?",
           options: ["7","8","11","13","15"],
           answer: "13",
           solution: "Setting up equations from equal side sums: q = 9 and X + 2 = q + 6 = 15, so X = 13.",
-          subject: "algebra"
+          subject: "algebra",
+          image_url: "/images/jk2025/q22.png"
         },
         {
           text: "Joey starts with 12 and makes 60 calculations, each time multiplying or dividing by 2 or by 3. Which of the following could NOT be his final answer?",
@@ -1059,9 +1106,9 @@ async function initializeDB() {
 
       for (const q of kangarooQuestions) {
         await pool.query(
-          `INSERT INTO questions (difficulty, type, text, answer, options, solution, source, subject)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          ['kangaroo', 'multipleChoice', q.text, q.answer, JSON.stringify(q.options), q.solution, 'Junior Kangaroo 2025', q.subject]
+          `INSERT INTO questions (difficulty, type, text, answer, options, solution, source, subject, image_url)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          ['kangaroo', 'multipleChoice', q.text, q.answer, JSON.stringify(q.options), q.solution, 'Junior Kangaroo 2025', q.subject, q.image_url || null]
         );
       }
       console.log('Seeded 25 Junior Kangaroo 2025 questions');

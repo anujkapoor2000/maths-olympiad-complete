@@ -338,6 +338,20 @@ body {
   border-color: #f5c6cb;
 }
 
+.question-image {
+  margin: 1rem 0 1.5rem;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fafafa;
+}
+
+.question-image img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
 .answer-section {
   margin: 2rem 0;
 }

@@ -1196,12 +1196,27 @@ app.post('/api/papers/complete', async (req, res) => {
 app.post('/api/papers/upload', upload.single('file'), async (req, res) => {
   const { user_id, paper_name } = req.body;
   try {
+    if (!req.file) return res.status(400).json({ error: 'No file provided' });
     const filename = req.file.originalname;
     const result = await pool.query(
       'INSERT INTO uploaded_papers (user_id, paper_name, filename) VALUES ($1, $2, $3) RETURNING *',
       [user_id, paper_name, filename]
     );
     res.json(result.rows[0]);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// List uploaded papers for a user
+app.get('/api/papers/list/:user_id', async (req, res) => {
+  const { user_id } = req.params;
+  try {
+    const result = await pool.query(
+      'SELECT * FROM uploaded_papers WHERE user_id = $1 ORDER BY created_at DESC',
+      [user_id]
+    );
+    res.json(result.rows);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

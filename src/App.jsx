@@ -14,6 +14,12 @@ export default function App() {
   const [progress, setProgress] = useState(null);
   const [sessions, setSessions] = useState([]);
 
+  // Parent upload state
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadName, setUploadName] = useState('');
+  const [uploadStatus, setUploadStatus] = useState(null); // null | 'uploading' | 'success' | 'error'
+  const [uploadedPapers, setUploadedPapers] = useState([]);
+
   // Paper-level state
   const [paperActive, setPaperActive] = useState(false);
   const [paperComplete, setPaperComplete] = useState(false);
@@ -67,6 +73,11 @@ export default function App() {
       setProgress(response.data.progress);
       setPage(response.data.type === 'child' ? 'challenge' : 'parentDash');
       setLoginForm({ username: '', password: '' });
+      if (response.data.type === 'parent') {
+        axios.get(`${API_URL}/api/papers/list/${response.data.id}`)
+          .then(r => setUploadedPapers(r.data))
+          .catch(() => {});
+      }
     } catch (err) {
       alert('Login failed: ' + (err.response?.data?.error || err.message));
     }
@@ -191,6 +202,40 @@ export default function App() {
     if (d === 'kangaroo') return 20;
     if (d === 'year8') return 15;
     return 10;
+  };
+
+  const handleUploadPaper = async () => {
+    if (!uploadFile || !uploadName.trim()) {
+      setUploadStatus('error');
+      return;
+    }
+    setUploadStatus('uploading');
+    try {
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      formData.append('user_id', currentUser.id);
+      formData.append('paper_name', uploadName.trim());
+      const response = await axios.post(`${API_URL}/api/papers/upload`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setUploadedPapers(prev => [response.data, ...prev]);
+      setUploadFile(null);
+      setUploadName('');
+      setUploadStatus('success');
+      setTimeout(() => setUploadStatus(null), 3000);
+    } catch (err) {
+      console.error('Upload error:', err);
+      setUploadStatus('error');
+    }
+  };
+
+  const loadUploadedPapers = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/api/papers/list/${currentUser.id}`);
+      setUploadedPapers(response.data);
+    } catch (err) {
+      console.error('Error loading papers:', err);
+    }
   };
 
   const handleQuitPaper = () => {
@@ -583,24 +628,20 @@ export default function App() {
     <div className="app">
       <header className="header">
         <h1>📚 Parent Dashboard</h1>
-        <button onClick={() => setCurrentUser(null)}>Logout</button>
+        <div className="user-info">
+          <span>{currentUser.name}</span>
+          <button onClick={() => setCurrentUser(null)}>Logout</button>
+        </div>
       </header>
 
       <div className="content">
         <div className="parent-dashboard">
           <h2>Child's Progress</h2>
 
-          <div className="upload-section">
-            <h3>Upload Past Papers</h3>
-            <input type="file" accept=".pdf" />
-            <input type="text" placeholder="Paper Name" />
-            <button className="btn-primary">Upload Paper</button>
-          </div>
-
           {progress && (
             <div className="stats-grid">
               <div className="stat-card">
-                <div className="label">This Week</div>
+                <div className="label">Questions Solved</div>
                 <div className="value">{progress.questions_solved}</div>
               </div>
               <div className="stat-card">
@@ -615,6 +656,55 @@ export default function App() {
                 <div className="label">Coins Earned</div>
                 <div className="value">{progress.total_coins}</div>
               </div>
+            </div>
+          )}
+
+          <div className="upload-section">
+            <h3>Upload Past Papers</h3>
+            <label className="file-label">
+              {uploadFile ? uploadFile.name : 'Choose PDF file…'}
+              <input
+                type="file"
+                accept=".pdf"
+                style={{ display: 'none' }}
+                onChange={(e) => { setUploadFile(e.target.files[0] || null); setUploadStatus(null); }}
+              />
+            </label>
+            <input
+              type="text"
+              placeholder="Paper name (e.g. JMC 2024)"
+              value={uploadName}
+              onChange={(e) => { setUploadName(e.target.value); setUploadStatus(null); }}
+            />
+            <button
+              className="btn-primary"
+              onClick={handleUploadPaper}
+              disabled={uploadStatus === 'uploading'}
+            >
+              {uploadStatus === 'uploading' ? 'Uploading…' : 'Upload Paper'}
+            </button>
+            {uploadStatus === 'success' && (
+              <p className="upload-msg success">✓ Paper uploaded successfully!</p>
+            )}
+            {uploadStatus === 'error' && (
+              <p className="upload-msg error">
+                {!uploadFile ? 'Please select a PDF file.' : !uploadName.trim() ? 'Please enter a paper name.' : 'Upload failed. Please try again.'}
+              </p>
+            )}
+          </div>
+
+          {uploadedPapers.length > 0 && (
+            <div className="uploaded-papers">
+              <h3>Uploaded Papers</h3>
+              <ul>
+                {uploadedPapers.map(p => (
+                  <li key={p.id}>
+                    <span className="paper-name">{p.paper_name}</span>
+                    <span className="paper-file">{p.filename}</span>
+                    <span className="paper-date">{new Date(p.created_at).toLocaleDateString()}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </div>

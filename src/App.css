@@ -489,17 +489,101 @@ body {
   margin-bottom: 1rem;
 }
 
-.upload-section input {
+.file-label {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 1rem;
+  border: 2px dashed #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #666;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.2s, background 0.2s;
+  box-sizing: border-box;
+}
+
+.file-label:hover {
+  border-color: #667eea;
+  background: #f5f7ff;
+}
+
+.upload-section input[type="text"] {
   width: 100%;
   padding: 12px;
   margin-bottom: 1rem;
   border: 1px solid #ddd;
   border-radius: 8px;
   font-size: 14px;
+  box-sizing: border-box;
 }
 
-.upload-section button {
+.upload-section .btn-primary {
   width: 100%;
+}
+
+.upload-section .btn-primary:disabled {
+  background: #aaa;
+  cursor: not-allowed;
+}
+
+.upload-msg {
+  margin-top: 0.75rem;
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+
+.upload-msg.success {
+  background: #d4edda;
+  color: #155724;
+}
+
+.upload-msg.error {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.uploaded-papers {
+  margin-top: 1.5rem;
+}
+
+.uploaded-papers h3 {
+  font-size: 15px;
+  margin-bottom: 0.75rem;
+  color: #333;
+}
+
+.uploaded-papers ul {
+  list-style: none;
+  padding: 0;
+}
+
+.uploaded-papers li {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 13px;
+}
+
+.paper-name {
+  font-weight: 500;
+  color: #333;
+  flex: 1;
+}
+
+.paper-file {
+  color: #999;
+  font-size: 12px;
+}
+
+.paper-date {
+  color: #aaa;
+  font-size: 12px;
+  flex-shrink: 0;
 }
 
 /* Subject breakdown on paper complete screen */

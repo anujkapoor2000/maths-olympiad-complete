@@ -1153,6 +1153,13 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const user = result.rows[0];
+
+    // Auto-create progress row for accounts added directly to the DB
+    await pool.query(
+      'INSERT INTO user_progress (user_id) VALUES ($1) ON CONFLICT DO NOTHING',
+      [user.id]
+    );
+
     const progress = await pool.query(
       'SELECT * FROM user_progress WHERE user_id = $1',
       [user.id]

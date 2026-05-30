@@ -485,6 +485,144 @@ body {
   width: 100%;
 }
 
+/* Subject breakdown on paper complete screen */
+.subject-breakdown {
+  text-align: left;
+  margin: 1.5rem 0;
+}
+
+.subject-breakdown h3 {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 0.75rem;
+}
+
+.subject-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 13px;
+}
+
+.subject-name {
+  width: 80px;
+  text-transform: capitalize;
+  color: #555;
+  flex-shrink: 0;
+}
+
+.subject-bar-wrap {
+  flex: 1;
+  background: #eee;
+  border-radius: 4px;
+  height: 10px;
+  overflow: hidden;
+}
+
+.subject-bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.subject-bar.strong { background: #48bb78; }
+.subject-bar.ok     { background: #ed8936; }
+.subject-bar.weak   { background: #e53e3e; }
+
+.subject-pct {
+  width: 36px;
+  text-align: right;
+  color: #666;
+  flex-shrink: 0;
+}
+
+/* 30-day graph */
+.graph-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  margin-bottom: 1.5rem;
+}
+
+.graph-card h3 {
+  font-size: 16px;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.graph-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.graph-empty {
+  color: #aaa;
+  font-size: 14px;
+  text-align: center;
+  padding: 2rem 0;
+}
+
+/* Paper history table */
+.sessions-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  margin-bottom: 1.5rem;
+  overflow-x: auto;
+}
+
+.sessions-card h3 {
+  font-size: 16px;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.sessions-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.sessions-table th {
+  text-align: left;
+  color: #999;
+  font-weight: 500;
+  border-bottom: 1px solid #eee;
+  padding: 0.5rem 0.75rem;
+}
+
+.sessions-table td {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid #f5f5f5;
+  color: #444;
+}
+
+.badge-small {
+  display: inline-block;
+  padding: 3px 8px;
+  background: #e0e7ff;
+  color: #667eea;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.score-pill {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.score-pill.green  { background: #d4edda; color: #155724; }
+.score-pill.amber  { background: #fff3cd; color: #856404; }
+.score-pill.red    { background: #f8d7da; color: #721c24; }
+
 @media (max-width: 768px) {
   .login-card {
     padding: 1.5rem;

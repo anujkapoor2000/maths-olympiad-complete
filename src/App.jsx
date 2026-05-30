@@ -12,11 +12,13 @@ export default function App() {
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [difficulty, setDifficulty] = useState('year6');
   const [progress, setProgress] = useState(null);
+  const [sessions, setSessions] = useState([]);
 
   // Paper-level state
   const [paperActive, setPaperActive] = useState(false);
   const [paperComplete, setPaperComplete] = useState(false);
   const [paperTimeRemaining, setPaperTimeRemaining] = useState(PAPER_TIME);
+  const [paperStartTime, setPaperStartTime] = useState(null);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [paperResults, setPaperResults] = useState([]);
 
@@ -40,6 +42,7 @@ export default function App() {
 
   const startPaper = async () => {
     setPaperTimeRemaining(PAPER_TIME);
+    setPaperStartTime(Date.now());
     setPaperActive(true);
     setPaperComplete(false);
     setQuestionIndex(0);
@@ -81,20 +84,43 @@ export default function App() {
       });
       setResult({ correct, expected: currentQuestion.answer });
       setAnswered(true);
-      setPaperResults(prev => [...prev, { correct }]);
+      setPaperResults(prev => [...prev, { correct, subject: currentQuestion.subject }]);
       const progressResponse = await axios.get(`${API_URL}/api/progress/${currentUser.id}`);
       setProgress(progressResponse.data.progress);
+      setSessions(progressResponse.data.sessions || []);
     } catch (err) {
       console.error('Error submitting answer:', err);
+    }
+  };
+
+  const finishPaper = async (results, timeRemaining) => {
+    setPaperActive(false);
+    setPaperComplete(true);
+    setCurrentQuestion(null);
+    const correctCount = results.filter(r => r.correct).length;
+    const timeTaken = PAPER_TIME - timeRemaining;
+    const coinsEarned = correctCount * (difficulty === 'olympiad' ? 25 : difficulty === 'year8' ? 15 : 10);
+    try {
+      await axios.post(`${API_URL}/api/papers/complete`, {
+        user_id: currentUser.id,
+        difficulty,
+        score: correctCount,
+        total_questions: results.length,
+        time_taken: timeTaken,
+        coins_earned: coinsEarned
+      });
+      const progressResponse = await axios.get(`${API_URL}/api/progress/${currentUser.id}`);
+      setProgress(progressResponse.data.progress);
+      setSessions(progressResponse.data.sessions || []);
+    } catch (err) {
+      console.error('Error recording paper session:', err);
     }
   };
 
   const handleNextQuestion = () => {
     const nextIndex = questionIndex + 1;
     if (nextIndex >= PAPER_QUESTIONS) {
-      setPaperActive(false);
-      setPaperComplete(true);
-      setCurrentQuestion(null);
+      finishPaper(paperResults, paperTimeRemaining);
     } else {
       setQuestionIndex(nextIndex);
       loadQuestion();
@@ -107,15 +133,24 @@ export default function App() {
     const interval = setInterval(() => {
       setPaperTimeRemaining(t => {
         if (t <= 1) {
-          setPaperActive(false);
-          setPaperComplete(true);
+          finishPaper(paperResults, 0);
           return 0;
         }
         return t - 1;
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [paperActive]);
+  }, [paperActive, paperResults]);
+
+  // Load sessions when going to progress page
+  useEffect(() => {
+    if (page === 'progress' && currentUser) {
+      axios.get(`${API_URL}/api/progress/${currentUser.id}`).then(r => {
+        setProgress(r.data.progress);
+        setSessions(r.data.sessions || []);
+      }).catch(() => {});
+    }
+  }, [page]);
 
   const demoLogin = (username, password) => {
     setLoginForm({ username, password });
@@ -128,6 +163,13 @@ export default function App() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const formatTimeTaken = (seconds) => {
+    if (!seconds) return '—';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs}s`;
+  };
+
   const parseOptions = (raw) => {
     if (!raw) return null;
     try {
@@ -136,6 +178,54 @@ export default function App() {
     } catch {
       return null;
     }
+  };
+
+  const difficultyLabel = (d) => {
+    if (d === 'olympiad') return 'Olympiad';
+    return d.replace('year', 'Year ');
+  };
+
+  // Build 30-day graph data from sessions
+  const buildGraphData = () => {
+    const today = new Date();
+    const days = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      days.push({ date: dateStr, label: i % 7 === 0 ? `${d.getDate()}/${d.getMonth()+1}` : '' });
+    }
+    const sessionsByDate = {};
+    sessions.forEach(s => {
+      const dateStr = new Date(s.completed_at).toISOString().split('T')[0];
+      if (!sessionsByDate[dateStr]) sessionsByDate[dateStr] = [];
+      sessionsByDate[dateStr].push(s);
+    });
+    return days.map(d => {
+      const daySessions = sessionsByDate[d.date] || [];
+      const avgPct = daySessions.length > 0
+        ? daySessions.reduce((sum, s) => sum + (s.score / s.total_questions) * 100, 0) / daySessions.length
+        : null;
+      return { ...d, pct: avgPct, count: daySessions.length };
+    });
+  };
+
+  // Subject breakdown from recent sessions results (using paper results in state)
+  const getSubjectBreakdown = () => {
+    // Tally from in-memory paperResults (current session subjects)
+    // For a richer view, we'd store per-question subject data server-side
+    const map = {};
+    paperResults.forEach(r => {
+      const s = r.subject || 'general';
+      if (!map[s]) map[s] = { correct: 0, total: 0 };
+      map[s].total++;
+      if (r.correct) map[s].correct++;
+    });
+    return Object.entries(map).map(([subject, data]) => ({
+      subject,
+      pct: Math.round((data.correct / data.total) * 100),
+      total: data.total
+    })).sort((a, b) => a.pct - b.pct);
   };
 
   if (!currentUser) {
@@ -180,10 +270,23 @@ export default function App() {
   if (currentUser.type === 'child') {
     const timerWarning = paperTimeRemaining < 300;
     const correctCount = paperResults.filter(r => r.correct).length;
+    const graphData = buildGraphData();
+    const subjectBreakdown = getSubjectBreakdown();
+
+    // SVG graph dimensions
+    const W = 600, H = 140, gpad = { top: 10, right: 10, bottom: 30, left: 30 };
+    const innerW = W - gpad.left - gpad.right;
+    const innerH = H - gpad.top - gpad.bottom;
+    const pointsWithData = graphData.filter(d => d.pct !== null);
+    const polyline = pointsWithData.map((d) => {
+      const xi = graphData.indexOf(d);
+      const x = gpad.left + (xi / 29) * innerW;
+      const y = gpad.top + (1 - d.pct / 100) * innerH;
+      return `${x},${y}`;
+    }).join(' ');
 
     return (
       <div className="app">
-        {/* Fixed top-right paper timer — visible while paper is active */}
         {paperActive && (
           <div className={`paper-timer${timerWarning ? ' warning' : ''}`}>
             <div className="paper-timer-label">Time Left</div>
@@ -219,11 +322,10 @@ export default function App() {
           {page === 'challenge' && (
             <div className="challenge-container">
 
-              {/* Year selector — only shown on start screen */}
               {!paperActive && !paperComplete && (
                 <div className="difficulty-selector">
                   <label>Year Level:</label>
-                  {['year6', 'year7', 'year8'].map(y => (
+                  {['year6', 'year7', 'year8', 'olympiad'].map(y => (
                     <label key={y}>
                       <input
                         type="radio"
@@ -231,22 +333,20 @@ export default function App() {
                         checked={difficulty === y}
                         onChange={(e) => setDifficulty(e.target.value)}
                       />
-                      {y.replace('year', 'Year ')}
+                      {difficultyLabel(y)}
                     </label>
                   ))}
                 </div>
               )}
 
-              {/* Start screen */}
               {!paperActive && !paperComplete && (
                 <div className="paper-start">
                   <h2>Ready for a challenge?</h2>
-                  <p>{PAPER_QUESTIONS} questions &middot; 30 minutes &middot; {difficulty.replace('year', 'Year ')}</p>
+                  <p>{PAPER_QUESTIONS} questions &middot; 30 minutes &middot; {difficultyLabel(difficulty)}</p>
                   <button className="btn-primary" onClick={startPaper}>Start Paper</button>
                 </div>
               )}
 
-              {/* Paper complete screen */}
               {paperComplete && (
                 <div className="paper-complete">
                   <h2>Paper Complete!</h2>
@@ -259,20 +359,36 @@ export default function App() {
                   {paperTimeRemaining === 0 && (
                     <p className="time-up">Time ran out!</p>
                   )}
+                  {subjectBreakdown.length > 0 && (
+                    <div className="subject-breakdown">
+                      <h3>Subject Breakdown</h3>
+                      {subjectBreakdown.map(s => (
+                        <div key={s.subject} className="subject-row">
+                          <span className="subject-name">{s.subject}</span>
+                          <div className="subject-bar-wrap">
+                            <div
+                              className={`subject-bar ${s.pct < 60 ? 'weak' : s.pct < 80 ? 'ok' : 'strong'}`}
+                              style={{ width: `${s.pct}%` }}
+                            />
+                          </div>
+                          <span className="subject-pct">{s.pct}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <button
                     className="btn-primary"
-                    onClick={() => { setPaperComplete(false); setCurrentQuestion(null); }}
+                    onClick={() => { setPaperComplete(false); setCurrentQuestion(null); setPaperResults([]); }}
                   >
                     Start New Paper
                   </button>
                 </div>
               )}
 
-              {/* Active question */}
               {paperActive && currentQuestion && (
                 <div className="question-card">
                   <div className="question-header">
-                    <span className="badge">{difficulty.replace('year', 'Year ')}</span>
+                    <span className="badge">{difficultyLabel(difficulty)}</span>
                     <span className="question-counter">
                       Question {questionIndex + 1} of {PAPER_QUESTIONS}
                     </span>
@@ -310,7 +426,7 @@ export default function App() {
                     <>
                       <div className={`result ${result.correct ? 'correct' : 'incorrect'}`}>
                         {result.correct
-                          ? '✓ Correct! +10 coins'
+                          ? `✓ Correct! +${difficulty === 'olympiad' ? 25 : difficulty === 'year8' ? 15 : 10} coins`
                           : `✗ Incorrect — answer: ${result.expected}`}
                       </div>
                       <div className="solution">
@@ -327,30 +443,119 @@ export default function App() {
             </div>
           )}
 
-          {page === 'progress' && progress && (
+          {page === 'progress' && (
             <div className="progress-container">
               <h2>Your Progress</h2>
-              <div className="stats-grid">
-                <div className="stat-card">
-                  <div className="label">Questions Solved</div>
-                  <div className="value">{progress.questions_solved}</div>
-                </div>
-                <div className="stat-card">
-                  <div className="label">Correct</div>
-                  <div className="value">{progress.correct_answers}</div>
-                </div>
-                <div className="stat-card">
-                  <div className="label">Accuracy</div>
-                  <div className="value">
-                    {progress.questions_solved > 0
-                      ? Math.round((progress.correct_answers / progress.questions_solved) * 100)
-                      : 0}%
+
+              {progress && (
+                <div className="stats-grid">
+                  <div className="stat-card">
+                    <div className="label">Questions Solved</div>
+                    <div className="value">{progress.questions_solved}</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="label">Correct</div>
+                    <div className="value">{progress.correct_answers}</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="label">Accuracy</div>
+                    <div className="value">
+                      {progress.questions_solved > 0
+                        ? Math.round((progress.correct_answers / progress.questions_solved) * 100)
+                        : 0}%
+                    </div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="label">Total Coins</div>
+                    <div className="value">{progress.total_coins}</div>
                   </div>
                 </div>
-                <div className="stat-card">
-                  <div className="label">Total Coins</div>
-                  <div className="value">{progress.total_coins}</div>
-                </div>
+              )}
+
+              {/* 30-day score trend */}
+              <div className="graph-card">
+                <h3>Score Trend — Last 30 Days</h3>
+                {pointsWithData.length === 0 ? (
+                  <p className="graph-empty">Complete papers to see your trend here.</p>
+                ) : (
+                  <svg viewBox={`0 0 ${W} ${H}`} className="graph-svg">
+                    {/* Grid lines */}
+                    {[0, 25, 50, 75, 100].map(pct => {
+                      const y = gpad.top + (1 - pct / 100) * innerH;
+                      return (
+                        <g key={pct}>
+                          <line x1={gpad.left} y1={y} x2={W - gpad.right} y2={y} stroke="#eee" strokeWidth="1" />
+                          <text x={gpad.left - 4} y={y + 4} fontSize="9" fill="#aaa" textAnchor="end">{pct}%</text>
+                        </g>
+                      );
+                    })}
+                    {/* X-axis labels */}
+                    {graphData.map((d, i) => d.label ? (
+                      <text
+                        key={i}
+                        x={gpad.left + (i / 29) * innerW}
+                        y={H - 4}
+                        fontSize="9"
+                        fill="#aaa"
+                        textAnchor="middle"
+                      >{d.label}</text>
+                    ) : null)}
+                    {/* Line */}
+                    {pointsWithData.length > 1 && (
+                      <polyline points={polyline} fill="none" stroke="#667eea" strokeWidth="2" />
+                    )}
+                    {/* Dots */}
+                    {pointsWithData.map((d) => {
+                      const xi = graphData.indexOf(d);
+                      const x = gpad.left + (xi / 29) * innerW;
+                      const y = gpad.top + (1 - d.pct / 100) * innerH;
+                      return (
+                        <circle key={d.date} cx={x} cy={y} r="3" fill="#667eea">
+                          <title>{d.date}: {Math.round(d.pct)}% ({d.count} paper{d.count !== 1 ? 's' : ''})</title>
+                        </circle>
+                      );
+                    })}
+                  </svg>
+                )}
+              </div>
+
+              {/* Paper history */}
+              <div className="sessions-card">
+                <h3>Paper History</h3>
+                {sessions.length === 0 ? (
+                  <p className="graph-empty">No papers completed yet.</p>
+                ) : (
+                  <table className="sessions-table">
+                    <thead>
+                      <tr>
+                        <th>Date &amp; Time</th>
+                        <th>Level</th>
+                        <th>Score</th>
+                        <th>Time Taken</th>
+                        <th>Coins</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sessions.map(s => {
+                        const dt = new Date(s.completed_at);
+                        const pct = Math.round((s.score / s.total_questions) * 100);
+                        return (
+                          <tr key={s.id}>
+                            <td>{dt.toLocaleDateString()} {dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                            <td><span className="badge-small">{difficultyLabel(s.difficulty)}</span></td>
+                            <td>
+                              <span className={`score-pill ${pct >= 80 ? 'green' : pct >= 50 ? 'amber' : 'red'}`}>
+                                {s.score}/{s.total_questions} ({pct}%)
+                              </span>
+                            </td>
+                            <td>{formatTimeTaken(s.time_taken)}</td>
+                            <td>💰 {s.coins_earned}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
           )}

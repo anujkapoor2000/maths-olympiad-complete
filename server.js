@@ -865,6 +865,199 @@ async function initializeDB() {
       console.log('Seeded 20 Olympiad questions');
     }
 
+    // Seed Junior Kangaroo 2025 questions (idempotent)
+    const kangarooCheck = await pool.query(
+      "SELECT COUNT(*) FROM questions WHERE source = 'Junior Kangaroo 2025'"
+    );
+    if (parseInt(kangarooCheck.rows[0].count) === 0) {
+      const kangarooQuestions = [
+        {
+          text: "Which of the following traffic signs has the greatest number of lines of symmetry? A: right-arrow sign, B: no U-turn sign, C: no-entry (horizontal bar) sign, D: right-curve sign, E: car sign.",
+          options: ["A (right arrow)","B (no U-turn)","C (no entry bar)","D (right curve)","E (car)"],
+          answer: "C (no entry bar)",
+          solution: "The no-entry sign (horizontal bar in circle) has two lines of symmetry — horizontal and vertical. The arrow and car signs have one line each; the U-turn and curve signs have none. So C has the most.",
+          subject: "geometry"
+        },
+        {
+          text: "Joseph draws a square with side-length 10 cm. He joins the midpoints of the sides to make a smaller square inside it. What is the area, in cm², of the smaller square?",
+          options: ["10","20","30","40","50"],
+          answer: "50",
+          solution: "The vertices of the smaller square are at the midpoints of the larger square's sides, each 5 cm from a corner. Each of the four corner right-angled triangles has area ½×5×5 = 12.5 cm². Area of smaller square = 100 − 4×12.5 = 50 cm².",
+          subject: "geometry"
+        },
+        {
+          text: "Millie's mother wants a knife on the right-hand side and a fork on the left-hand side of each plate. Starting from the arrangement shown (knife left, fork right for all plates), what is the smallest number of knife–fork swaps needed?",
+          options: ["1","2","3","5","6"],
+          answer: "2",
+          solution: "There are 4 items in the wrong place. Each swap fixes 2 items, so the minimum number of swaps is 4 ÷ 2 = 2.",
+          subject: "logic"
+        },
+        {
+          text: "On the left side of a room, Jia and Lottie are sleeping facing each other with heads on their pillows. On the right side, Anaya and Isla are sleeping back to back with heads on their pillows. How many of the four girls are sleeping with their right ear on their pillow?",
+          options: ["0","1","2","3","4"],
+          answer: "2",
+          solution: "Jia and Lottie face each other, so exactly one has her right ear down. Anaya and Isla face away from each other, so exactly one has her right ear down. Total = 2.",
+          subject: "logic"
+        },
+        {
+          text: "A piece of paper with squares labelled P, Q (top row) and R, S, T (bottom row) is folded along the dotted lines to make an open box placed on a table with the top open. What letter is on the face that is on the table?",
+          options: ["P","Q","R","S","T"],
+          answer: "Q",
+          solution: "When folded: P is opposite S, R is opposite T. Q has no face opposite it, so Q ends up on the table.",
+          subject: "geometry"
+        },
+        {
+          text: "Two identical squares of paper are glued together (overlapping at a corner). Which of the following shapes CANNOT be formed? A: house shape (square + triangle roof), B: star/octagon shape, C: rectangle, D: L-shape, E: arrow pointing down.",
+          options: ["A (house/triangle top)","B (star shape)","C (rectangle)","D (L-shape)","E (arrow down)"],
+          answer: "A (house/triangle top)",
+          solution: "The triangle at the top of shape A would need to be equilateral, but the angle at the top is 90° (interior angle of a square), not 60°. So shape A cannot be formed. The others can be made by overlapping the two squares in various ways.",
+          subject: "geometry"
+        },
+        {
+          text: "2025 is a perfect square (45²). How many distinct prime numbers divide exactly into 2025?",
+          options: ["1","2","3","4","5"],
+          answer: "2",
+          solution: "2025 = 45² = (3²×5)² = 3⁴ × 5². The only distinct primes are 3 and 5, so there are 2 distinct prime factors.",
+          subject: "number"
+        },
+        {
+          text: "Five squirrels V, W, X, Y, Z sit on a line. There are six nuts (marked ×) on the line between and around them. All squirrels run toward their nearest nut simultaneously at the same speed; when a squirrel gets a nut it heads to the next nearest. Which squirrel gets two nuts?",
+          options: ["V","W","X","Y","Z"],
+          answer: "X",
+          solution: "After the first nuts are collected, the remaining nut is between X, Y and Z but squirrel X is closest to it, so X collects two nuts.",
+          subject: "logic"
+        },
+        {
+          text: "There are 30 students in a class. They sit in pairs so that each boy is sitting next to a girl, and exactly half the girls are sitting next to a boy. How many boys are there?",
+          options: ["25","20","15","10","5"],
+          answer: "10",
+          solution: "Let there be x boys. Each boy sits next to a girl, so x girls sit next to a boy. Since half the girls sit next to a boy, there are 2x girls in total. x + 2x = 30 gives x = 10.",
+          subject: "algebra"
+        },
+        {
+          text: "The number 2581953764 is written on a strip of paper. Dilraj cuts the strip twice to get three numbers, then adds them. What is the smallest possible sum?",
+          options: ["2675","2975","2978","4217","4298"],
+          answer: "2975",
+          solution: "Splitting as 258 | 1953 | 764 gives sum 2975. Splitting as 2581 | 953 | 764 gives 4298, and 258 | 195 | 3764 gives 4217. The minimum is 2975.",
+          subject: "number"
+        },
+        {
+          text: "My granny bought enough cat food to last her 4 cats for 12 days. On the way home she found 2 stray cats and kept them. Each cat gets the same amount daily. How many days does the food last?",
+          options: ["8","7","6","5","4"],
+          answer: "8",
+          solution: "Total food = 4 × 12 = 48 cat-days. Shared among 6 cats: 48 ÷ 6 = 8 days.",
+          subject: "number"
+        },
+        {
+          text: "Each letter in 'BENJAMIN' represents a different digit from 1 to 7. The integer BENJAMIN is odd and divisible by 3. Which digit does N represent?",
+          options: ["1","3","4","5","7"],
+          answer: "5",
+          solution: "N appears twice; all others appear once. Digit sum = (1+2+3+4+5+6+7) + N = 28 + N. For divisibility by 3, 28+N must be divisible by 3, so N ≡ 2 (mod 3). Among odd digits 1–7: N=5 gives 33 ÷ 3 = 11 ✓. So N = 5.",
+          subject: "number"
+        },
+        {
+          text: "Tim, Tom and Jim are triplets. Their brother Carl is 3 years younger. Which of the following could be the sum of the ages of the four brothers?",
+          options: ["53","54","56","59","63"],
+          answer: "53",
+          solution: "If the triplets are each age x, Carl is x−3. Sum = 4x−3. This must be 3 less than a multiple of 4. Only 53 = 4×14−3 satisfies this. (Tim, Tom, Jim = 14; Carl = 11.)",
+          subject: "algebra"
+        },
+        {
+          text: "The perimeter of rectangle PQRS is 30 cm. Three smaller rectangles are added with their centres at P, Q and S, and the sum of their perimeters is 20 cm. What is the total perimeter of the new shape?",
+          options: ["50 cm","45 cm","40 cm","35 cm","33 cm"],
+          answer: "40 cm",
+          solution: "Each added rectangle increases the total perimeter by half its own perimeter. The three rectangles add ½ × 20 = 10 cm. Total perimeter = 30 + 10 = 40 cm.",
+          subject: "geometry"
+        },
+        {
+          text: "Run Ze writes all integers where: the first digit is 1, each following digit is at least as large as the one before it, and the digit sum is 5. How many such integers does he write?",
+          options: ["9","8","7","6","5"],
+          answer: "5",
+          solution: "The integers are: 11111, 1112, 113, 14, and 122. That is 5 integers.",
+          subject: "logic"
+        },
+        {
+          text: "An L-shaped tetromino (made of 4 unit squares in an L shape) is to be cut from a 5×5 grid of 25 unit squares. What is the largest number of such pieces that can be cut out?",
+          options: ["2","4","5","6","7"],
+          answer: "6",
+          solution: "Each piece covers 4 squares. Since 25 = 4×6+1, at most 6 pieces could fit, and it is possible to arrange 6 non-overlapping L-tetrominoes in the 5×5 grid.",
+          subject: "logic"
+        },
+        {
+          text: "Luigi has some square tables and chairs. Arranging tables singly with 4 chairs each leaves him 6 chairs short. Arranging tables in pairs with 6 chairs per pair leaves 4 chairs over. How many tables did he receive?",
+          options: ["8","10","12","14","16"],
+          answer: "10",
+          solution: "Let the number of tables be 2x. Chairs available = 8x − 6 = 6x + 4, so 2x = 10. Luigi received 10 tables.",
+          subject: "algebra"
+        },
+        {
+          text: "Lily wants to make a large triangle from small triangular tiles. She has already placed 7 tiles. What is the smallest number of additional tiles she needs to complete a large triangle?",
+          options: ["5","9","12","15","18"],
+          answer: "9",
+          solution: "The existing shape fits inside a large triangle whose rows contain 7+5+3+1 = 16 tiles. Since 7 tiles are placed, she needs 16 − 7 = 9 more tiles.",
+          subject: "geometry"
+        },
+        {
+          text: "Three vertices of rectangle PQRS are at P(1,1), Q(7,4) and R(5,8). What are the co-ordinates of S?",
+          options: ["(-1,4)","(0,5)","(-2,6)","(-1,5)","(-1,6)"],
+          answer: "(-1,5)",
+          solution: "PQ vector: (6,3). SR must equal PQ. S = R − PQ = (5−6, 8−3) = (−1,5).",
+          subject: "geometry"
+        },
+        {
+          text: "A large cube is built from 8 small cubes, some painted black and some white. Five faces of the large cube are shown (with 2,1,1,1,1 black squares visible). What does the sixth face look like?",
+          options: ["All white (0 black squares)","1 black square top-left","1 black square bottom-right","2 black squares diagonal","2 black squares same side"],
+          answer: "All white (0 black squares)",
+          solution: "Each small cube has 3 faces on the large cube. Total visible black squares must be a multiple of 3. Five faces show 2+1+1+1+1 = 6 black squares. The sixth face must add 0 black squares (6+0=6, a multiple of 3). So the sixth face is all white.",
+          subject: "logic"
+        },
+        {
+          text: "A rectangular swimming pool of length 20 m is surrounded on all four sides by a path 2 m wide. The area of the path equals the area of the pool. What is the width, in metres, of the pool?",
+          options: ["6.5","6","5.5","5","4.5"],
+          answer: "6",
+          solution: "Let width = Y m. Outer rectangle: 24×(Y+4). Path area = 24(Y+4) − 20Y = 20Y. So 96 = 16Y, giving Y = 6.",
+          subject: "algebra"
+        },
+        {
+          text: "Kirsten wrote numbers in five of ten circles around a pentagon: 7, 3, 1, 6, 2 (as shown). She fills the remaining five circles so that the sum along each side of the pentagon is equal. What number goes in the circle marked X (between 7 and 2)?",
+          options: ["7","8","11","13","15"],
+          answer: "13",
+          solution: "Setting up equations from equal side sums: q = 9 and X + 2 = q + 6 = 15, so X = 13.",
+          subject: "algebra"
+        },
+        {
+          text: "Joey starts with 12 and makes 60 calculations, each time multiplying or dividing by 2 or by 3. Which of the following could NOT be his final answer?",
+          options: ["12","18","36","72","108"],
+          answer: "36",
+          solution: "After 60 calculations the result must be reachable with an even number of net changes. 36 = 12×3 requires an odd number of net operations and cannot be achieved after an even total of 60 steps.",
+          subject: "number"
+        },
+        {
+          text: "The digits of three-digit integer 'XYZ' are all different. The digit sum of 'XXY' equals the two-digit integer 'YZ'. The digit sum of 'YZ' equals the digit 'Y'. What digit does X represent?",
+          options: ["4","5","6","8","9"],
+          answer: "9",
+          solution: "Y+Z = Y implies Z = 0. Then 2X+Y = 10Y, so 2X = 9Y, meaning X = 9 and Y = 2.",
+          subject: "number"
+        },
+        {
+          text: "Two three-digit integers have all six digits distinct. The first digit of the second integer is twice the last digit of the first integer. What is the smallest possible sum of the two integers?",
+          options: ["597","546","537","535","301"],
+          answer: "537",
+          solution: "To minimise the sum, use 1 and 4 in the hundreds places (since 4 = 2×2 and the last digit of the first integer is 2). One example: 102 + 435 = 537.",
+          subject: "number"
+        }
+      ];
+
+      for (const q of kangarooQuestions) {
+        await pool.query(
+          `INSERT INTO questions (difficulty, type, text, answer, options, solution, source, subject)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          ['kangaroo', 'multipleChoice', q.text, q.answer, JSON.stringify(q.options), q.solution, 'Junior Kangaroo 2025', q.subject]
+        );
+      }
+      console.log('Seeded 25 Junior Kangaroo 2025 questions');
+    }
+
     console.log('Database tables initialized');
   } catch (err) {
     console.error('Error initializing database:', err);
@@ -933,7 +1126,8 @@ app.get('/api/questions/:difficulty', async (req, res) => {
 app.post('/api/progress/update', async (req, res) => {
   const { user_id, correct, difficulty } = req.body;
   try {
-    const coinsEarned = correct ? (difficulty === 'olympiad' ? 25 : difficulty === 'year8' ? 15 : 10) : 0;
+    const coinsMap = { olympiad: 25, kangaroo: 20, year8: 15 };
+    const coinsEarned = correct ? (coinsMap[difficulty] || 10) : 0;
 
     const progress = await pool.query(
       `UPDATE user_progress

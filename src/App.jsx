@@ -99,7 +99,7 @@ export default function App() {
     setCurrentQuestion(null);
     const correctCount = results.filter(r => r.correct).length;
     const timeTaken = PAPER_TIME - timeRemaining;
-    const coinsEarned = correctCount * (difficulty === 'olympiad' ? 25 : difficulty === 'year8' ? 15 : 10);
+    const coinsEarned = correctCount * coinsPerCorrect(difficulty);
     try {
       await axios.post(`${API_URL}/api/papers/complete`, {
         user_id: currentUser.id,
@@ -182,7 +182,20 @@ export default function App() {
 
   const difficultyLabel = (d) => {
     if (d === 'olympiad') return 'Olympiad';
+    if (d === 'kangaroo') return 'Kangaroo';
     return d.replace('year', 'Year ');
+  };
+
+  const coinsPerCorrect = (d) => {
+    if (d === 'olympiad') return 25;
+    if (d === 'kangaroo') return 20;
+    if (d === 'year8') return 15;
+    return 10;
+  };
+
+  const handleQuitPaper = () => {
+    setPaperActive(false);
+    setPaperComplete(true);
   };
 
   // Build 30-day graph data from sessions
@@ -325,7 +338,7 @@ export default function App() {
               {!paperActive && !paperComplete && (
                 <div className="difficulty-selector">
                   <label>Year Level:</label>
-                  {['year6', 'year7', 'year8', 'olympiad'].map(y => (
+                  {['year6', 'year7', 'year8', 'olympiad', 'kangaroo'].map(y => (
                     <label key={y}>
                       <input
                         type="radio"
@@ -392,6 +405,7 @@ export default function App() {
                     <span className="question-counter">
                       Question {questionIndex + 1} of {PAPER_QUESTIONS}
                     </span>
+                    <button className="btn-quit" onClick={handleQuitPaper}>✕ Quit</button>
                   </div>
                   <h2>{currentQuestion.text}</h2>
 
@@ -426,7 +440,7 @@ export default function App() {
                     <>
                       <div className={`result ${result.correct ? 'correct' : 'incorrect'}`}>
                         {result.correct
-                          ? `✓ Correct! +${difficulty === 'olympiad' ? 25 : difficulty === 'year8' ? 15 : 10} coins`
+                          ? `✓ Correct! +${coinsPerCorrect(difficulty)} coins`
                           : `✗ Incorrect — answer: ${result.expected}`}
                       </div>
                       <div className="solution">

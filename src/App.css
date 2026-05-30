@@ -211,27 +211,114 @@ body {
   color: #333;
 }
 
-.timer {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin: 2rem 0;
-  padding: 1rem;
-  background: #f5f5f5;
-  border-radius: 8px;
-}
-
-.timer-circle {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
+/* Fixed top-right paper timer */
+.paper-timer {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
   background: #667eea;
   color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  padding: 0.5rem 1.1rem;
+  border-radius: 10px;
+  z-index: 1000;
+  text-align: center;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  min-width: 88px;
+}
+
+.paper-timer.warning {
+  background: #e53e3e;
+  animation: timerPulse 1s infinite;
+}
+
+.paper-timer-label {
+  font-size: 10px;
+  opacity: 0.85;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 2px;
+}
+
+.paper-timer-value {
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 1px;
+}
+
+@keyframes timerPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Paper start screen */
+.paper-start {
+  background: white;
+  border-radius: 12px;
+  padding: 3rem 2rem;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.paper-start h2 {
   font-size: 24px;
-  font-weight: 500;
+  margin-bottom: 0.5rem;
+  color: #333;
+}
+
+.paper-start p {
+  color: #666;
+  font-size: 15px;
+  margin-bottom: 2rem;
+}
+
+/* Paper complete screen */
+.paper-complete {
+  background: white;
+  border-radius: 12px;
+  padding: 3rem 2rem;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.paper-complete h2 {
+  font-size: 28px;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.paper-score {
+  font-size: 64px;
+  font-weight: 700;
+  color: #667eea;
+  margin: 0.5rem 0 1rem;
+}
+
+.score-message {
+  font-size: 20px;
+  margin-bottom: 1.5rem;
+  color: #333;
+}
+
+.time-up {
+  color: #e53e3e;
+  font-size: 14px;
+  margin-bottom: 1rem;
+}
+
+/* Question header with counter */
+.question-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.question-counter {
+  font-size: 13px;
+  color: #999;
 }
 
 .answer-section {

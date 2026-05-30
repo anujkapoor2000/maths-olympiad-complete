@@ -20,6 +20,12 @@ export default function App() {
   const [uploadStatus, setUploadStatus] = useState(null); // null | 'uploading' | 'success' | 'error'
   const [uploadedPapers, setUploadedPapers] = useState([]);
 
+  // Parent–child linking state
+  const [children, setChildren] = useState([]);
+  const [linkUsername, setLinkUsername] = useState('');
+  const [linkStatus, setLinkStatus] = useState(null); // null | 'linking' | {error} | 'ok'
+  const [selectedChild, setSelectedChild] = useState(null);
+
   // Paper-level state
   const [paperActive, setPaperActive] = useState(false);
   const [paperComplete, setPaperComplete] = useState(false);
@@ -74,9 +80,12 @@ export default function App() {
       setPage(response.data.type === 'child' ? 'challenge' : 'parentDash');
       setLoginForm({ username: '', password: '' });
       if (response.data.type === 'parent') {
-        axios.get(`${API_URL}/api/papers/list/${response.data.id}`)
-          .then(r => setUploadedPapers(r.data))
-          .catch(() => {});
+        const pid = response.data.id;
+        axios.get(`${API_URL}/api/papers/list/${pid}`).then(r => setUploadedPapers(r.data)).catch(() => {});
+        axios.get(`${API_URL}/api/parent/children/${pid}`).then(r => {
+          setChildren(r.data);
+          if (r.data.length > 0) setSelectedChild(r.data[0]);
+        }).catch(() => {});
       }
     } catch (err) {
       alert('Login failed: ' + (err.response?.data?.error || err.message));
@@ -235,6 +244,41 @@ export default function App() {
       setUploadedPapers(response.data);
     } catch (err) {
       console.error('Error loading papers:', err);
+    }
+  };
+
+  const handleLinkChild = async () => {
+    if (!linkUsername.trim()) return;
+    setLinkStatus('linking');
+    try {
+      const response = await axios.post(`${API_URL}/api/parent/link-child`, {
+        parent_id: currentUser.id,
+        child_username: linkUsername.trim()
+      });
+      const newChild = response.data;
+      // Fetch full child data (progress + sessions)
+      const fullData = await axios.get(`${API_URL}/api/parent/children/${currentUser.id}`);
+      setChildren(fullData.data);
+      const linked = fullData.data.find(c => c.id === newChild.id) || fullData.data[0];
+      setSelectedChild(linked);
+      setLinkUsername('');
+      setLinkStatus('ok');
+      setTimeout(() => setLinkStatus(null), 3000);
+    } catch (err) {
+      setLinkStatus({ error: err.response?.data?.error || 'Could not link child.' });
+    }
+  };
+
+  const handleUnlinkChild = async (childId) => {
+    try {
+      await axios.delete(`${API_URL}/api/parent/unlink-child`, {
+        data: { parent_id: currentUser.id, child_id: childId }
+      });
+      const updated = children.filter(c => c.id !== childId);
+      setChildren(updated);
+      setSelectedChild(updated.length > 0 ? updated[0] : null);
+    } catch (err) {
+      console.error('Unlink error:', err);
     }
   };
 
@@ -624,6 +668,10 @@ export default function App() {
   }
 
   // Parent Dashboard
+  const child = selectedChild;
+  const childProgress = child?.progress;
+  const childSessions = child?.sessions || [];
+
   return (
     <div className="app">
       <header className="header">
@@ -636,29 +684,126 @@ export default function App() {
 
       <div className="content">
         <div className="parent-dashboard">
-          <h2>Child's Progress</h2>
 
-          {progress && (
-            <div className="stats-grid">
-              <div className="stat-card">
-                <div className="label">Questions Solved</div>
-                <div className="value">{progress.questions_solved}</div>
-              </div>
-              <div className="stat-card">
-                <div className="label">Accuracy</div>
-                <div className="value">
-                  {progress.questions_solved > 0
-                    ? Math.round((progress.correct_answers / progress.questions_solved) * 100)
-                    : 0}%
-                </div>
-              </div>
-              <div className="stat-card">
-                <div className="label">Coins Earned</div>
-                <div className="value">{progress.total_coins}</div>
-              </div>
+          {/* Link a child */}
+          <div className="link-child-section">
+            <h3>Link a Child Account</h3>
+            <div className="link-child-row">
+              <input
+                type="text"
+                placeholder="Child's username"
+                value={linkUsername}
+                onChange={(e) => { setLinkUsername(e.target.value); setLinkStatus(null); }}
+                onKeyPress={(e) => e.key === 'Enter' && handleLinkChild()}
+              />
+              <button
+                className="btn-primary"
+                onClick={handleLinkChild}
+                disabled={linkStatus === 'linking'}
+              >
+                {linkStatus === 'linking' ? 'Linking…' : 'Link Child'}
+              </button>
             </div>
+            {linkStatus === 'ok' && <p className="upload-msg success">✓ Child linked successfully!</p>}
+            {linkStatus?.error && <p className="upload-msg error">{linkStatus.error}</p>}
+          </div>
+
+          {/* Linked children tabs */}
+          {children.length > 0 && (
+            <>
+              <div className="child-tabs">
+                {children.map(c => (
+                  <div key={c.id} className={`child-tab ${selectedChild?.id === c.id ? 'active' : ''}`}>
+                    <button onClick={() => setSelectedChild(c)}>{c.name}</button>
+                    <span
+                      className="unlink-btn"
+                      onClick={() => handleUnlinkChild(c.id)}
+                      title="Unlink this child"
+                    >✕</span>
+                  </div>
+                ))}
+              </div>
+
+              {child && (
+                <div className="child-report">
+                  <h2>{child.name}'s Progress <span className="username-tag">@{child.username}</span></h2>
+
+                  {childProgress ? (
+                    <div className="stats-grid">
+                      <div className="stat-card">
+                        <div className="label">Questions Solved</div>
+                        <div className="value">{childProgress.questions_solved}</div>
+                      </div>
+                      <div className="stat-card">
+                        <div className="label">Correct</div>
+                        <div className="value">{childProgress.correct_answers}</div>
+                      </div>
+                      <div className="stat-card">
+                        <div className="label">Accuracy</div>
+                        <div className="value">
+                          {childProgress.questions_solved > 0
+                            ? Math.round((childProgress.correct_answers / childProgress.questions_solved) * 100)
+                            : 0}%
+                        </div>
+                      </div>
+                      <div className="stat-card">
+                        <div className="label">Total Coins</div>
+                        <div className="value">💰 {childProgress.total_coins}</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="graph-empty">No progress recorded yet.</p>
+                  )}
+
+                  <div className="sessions-card">
+                    <h3>Recent Papers</h3>
+                    {childSessions.length === 0 ? (
+                      <p className="graph-empty">No papers completed yet.</p>
+                    ) : (
+                      <table className="sessions-table">
+                        <thead>
+                          <tr>
+                            <th>Date &amp; Time</th>
+                            <th>Level</th>
+                            <th>Score</th>
+                            <th>Time Taken</th>
+                            <th>Coins</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {childSessions.map(s => {
+                            const dt = new Date(s.completed_at);
+                            const pct = Math.round((s.score / s.total_questions) * 100);
+                            return (
+                              <tr key={s.id}>
+                                <td>{dt.toLocaleDateString()} {dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                                <td><span className="badge-small">{difficultyLabel(s.difficulty)}</span></td>
+                                <td>
+                                  <span className={`score-pill ${pct >= 80 ? 'green' : pct >= 50 ? 'amber' : 'red'}`}>
+                                    {s.score}/{s.total_questions} ({pct}%)
+                                  </span>
+                                </td>
+                                <td>{formatTimeTaken(s.time_taken)}</td>
+                                <td>💰 {s.coins_earned}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
+          {children.length === 0 && (
+            <p className="graph-empty" style={{ marginTop: '1rem' }}>
+              No children linked yet. Enter your child's username above to get started.
+            </p>
+          )}
+
+          {/* Upload past papers */}
           <div className="upload-section">
             <h3>Upload Past Papers</h3>
             <label className="file-label">
@@ -683,9 +828,7 @@ export default function App() {
             >
               {uploadStatus === 'uploading' ? 'Uploading…' : 'Upload Paper'}
             </button>
-            {uploadStatus === 'success' && (
-              <p className="upload-msg success">✓ Paper uploaded successfully!</p>
-            )}
+            {uploadStatus === 'success' && <p className="upload-msg success">✓ Paper uploaded successfully!</p>}
             {uploadStatus === 'error' && (
               <p className="upload-msg error">
                 {!uploadFile ? 'Please select a PDF file.' : !uploadName.trim() ? 'Please enter a paper name.' : 'Upload failed. Please try again.'}
@@ -707,6 +850,7 @@ export default function App() {
               </ul>
             </div>
           )}
+
         </div>
       </div>
     </div>

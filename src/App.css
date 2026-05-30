@@ -586,6 +586,105 @@ body {
   flex-shrink: 0;
 }
 
+/* Parent: link child */
+.link-child-section {
+  background: #f9f9ff;
+  border: 1px solid #e0e7ff;
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.link-child-section h3 {
+  font-size: 14px;
+  color: #667eea;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.link-child-row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.link-child-row input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.link-child-row .btn-primary {
+  padding: 10px 20px;
+  white-space: nowrap;
+}
+
+/* Child tabs */
+.child-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.child-tab {
+  display: flex;
+  align-items: center;
+  border-radius: 20px;
+  background: #f0f0f0;
+  overflow: hidden;
+  transition: background 0.2s;
+}
+
+.child-tab.active {
+  background: #667eea;
+}
+
+.child-tab button {
+  background: none;
+  border: none;
+  padding: 7px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #555;
+  font-weight: 500;
+}
+
+.child-tab.active button {
+  color: white;
+}
+
+.unlink-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  color: #999;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.child-tab.active .unlink-btn {
+  color: rgba(255,255,255,0.7);
+}
+
+.unlink-btn:hover {
+  color: #e53e3e !important;
+}
+
+/* Child report */
+.child-report h2 {
+  font-size: 20px;
+  margin-bottom: 1.25rem;
+  color: #333;
+}
+
+.username-tag {
+  font-size: 13px;
+  color: #999;
+  font-weight: 400;
+  margin-left: 0.5rem;
+}
+
 /* Subject breakdown on paper complete screen */
 .subject-breakdown {
   text-align: left;

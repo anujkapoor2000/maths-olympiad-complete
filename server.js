@@ -113,6 +113,15 @@ async function initializeDB() {
     `);
 
     await pool.query(`
+      CREATE TABLE IF NOT EXISTS parent_child (
+        id SERIAL PRIMARY KEY,
+        parent_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        child_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE(parent_id, child_id)
+      );
+    `);
+
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS paper_sessions (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id),
@@ -1172,6 +1181,70 @@ app.get('/api/progress/:user_id', async (req, res) => {
       [user_id]
     );
     res.json({ progress: progress.rows[0], history: history.rows, sessions: sessions.rows });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Parent–child linking
+app.post('/api/parent/link-child', async (req, res) => {
+  const { parent_id, child_username } = req.body;
+  try {
+    const child = await pool.query(
+      "SELECT id, name, username FROM users WHERE username = $1 AND type = 'child'",
+      [child_username]
+    );
+    if (child.rows.length === 0) {
+      return res.status(404).json({ error: 'No child account found with that username.' });
+    }
+    await pool.query(
+      'INSERT INTO parent_child (parent_id, child_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [parent_id, child.rows[0].id]
+    );
+    res.json(child.rows[0]);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.delete('/api/parent/unlink-child', async (req, res) => {
+  const { parent_id, child_id } = req.body;
+  try {
+    await pool.query(
+      'DELETE FROM parent_child WHERE parent_id = $1 AND child_id = $2',
+      [parent_id, child_id]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Get all linked children for a parent, with their progress and recent sessions
+app.get('/api/parent/children/:parent_id', async (req, res) => {
+  const { parent_id } = req.params;
+  try {
+    const children = await pool.query(
+      `SELECT u.id, u.name, u.username
+       FROM users u
+       JOIN parent_child pc ON pc.child_id = u.id
+       WHERE pc.parent_id = $1`,
+      [parent_id]
+    );
+
+    const result = await Promise.all(children.rows.map(async child => {
+      const progress = await pool.query(
+        'SELECT * FROM user_progress WHERE user_id = $1',
+        [child.id]
+      );
+      const sessions = await pool.query(
+        `SELECT * FROM paper_sessions WHERE user_id = $1 ORDER BY completed_at DESC LIMIT 10`,
+        [child.id]
+      );
+      return { ...child, progress: progress.rows[0] || null, sessions: sessions.rows };
+    }));
+
+    res.json(result);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

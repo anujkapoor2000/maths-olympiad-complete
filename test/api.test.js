@@ -156,3 +156,36 @@ describe('GET /api/questions/:difficulty', () => {
     expect(res.body).toBeNull();
   });
 });
+
+describe('POST /api/papers/upload', () => {
+  it('returns 400 when no file is attached (regression)', async () => {
+    const res = await request(app)
+      .post('/api/papers/upload')
+      .field('user_id', '1')
+      .field('paper_name', 'Mock 2023');
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('No file uploaded');
+  });
+
+  it('stores an uploaded paper and returns the record', async () => {
+    let insertParams;
+    route = (text, params) => {
+      if (/INSERT INTO uploaded_papers/.test(text)) {
+        insertParams = params; // [user_id, paper_name, filename]
+        return { rows: [{ id: 9, user_id: 1, paper_name: 'Mock 2023', filename: 'paper.pdf' }] };
+      }
+      return null;
+    };
+
+    const res = await request(app)
+      .post('/api/papers/upload')
+      .field('user_id', '1')
+      .field('paper_name', 'Mock 2023')
+      .attach('file', Buffer.from('%PDF-1.4 fake'), 'paper.pdf');
+
+    expect(res.status).toBe(200);
+    expect(res.body.id).toBe(9);
+    expect(insertParams).toEqual(['1', 'Mock 2023', 'paper.pdf']);
+  });
+});

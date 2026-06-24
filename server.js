@@ -248,6 +248,12 @@ function createApp(pool) {
   app.post('/api/papers/upload', upload.single('file'), async (req, res) => {
     const { user_id, paper_name } = req.body;
     try {
+      // multer leaves req.file undefined when no file part is present; guard
+      // against it so a fileless request returns a 400 instead of throwing.
+      if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+
       // In production, process PDF with Claude API to extract questions
       const filename = req.file.originalname;
 

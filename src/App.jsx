@@ -667,8 +667,8 @@ export default function App() {
                       const y = gpad.top + (1 - pct / 100) * innerH;
                       return (
                         <g key={pct}>
-                          <line x1={gpad.left} y1={y} x2={W - gpad.right} y2={y} stroke="#eee" strokeWidth="1" />
-                          <text x={gpad.left - 4} y={y + 4} fontSize="9" fill="#aaa" textAnchor="end">{pct}%</text>
+                          <line x1={gpad.left} y1={y} x2={W - gpad.right} y2={y} style={{ stroke: 'var(--border)' }} strokeWidth="1" />
+                          <text x={gpad.left - 4} y={y + 4} fontSize="9" style={{ fill: 'var(--text-faint)' }} textAnchor="end">{pct}%</text>
                         </g>
                       );
                     })}
@@ -679,13 +679,13 @@ export default function App() {
                         x={gpad.left + (i / 29) * innerW}
                         y={H - 4}
                         fontSize="9"
-                        fill="#aaa"
+                        style={{ fill: 'var(--text-faint)' }}
                         textAnchor="middle"
                       >{d.label}</text>
                     ) : null)}
                     {/* Line */}
                     {pointsWithData.length > 1 && (
-                      <polyline points={polyline} fill="none" stroke="#667eea" strokeWidth="2" />
+                      <polyline points={polyline} fill="none" style={{ stroke: 'var(--accent)' }} strokeWidth="2" />
                     )}
                     {/* Dots */}
                     {pointsWithData.map((d) => {
@@ -693,7 +693,7 @@ export default function App() {
                       const x = gpad.left + (xi / 29) * innerW;
                       const y = gpad.top + (1 - d.pct / 100) * innerH;
                       return (
-                        <circle key={d.date} cx={x} cy={y} r="3" fill="#667eea">
+                        <circle key={d.date} cx={x} cy={y} r="3" style={{ fill: 'var(--accent)' }}>
                           <title>{d.date}: {Math.round(d.pct)}% ({d.count} paper{d.count !== 1 ? 's' : ''})</title>
                         </circle>
                       );

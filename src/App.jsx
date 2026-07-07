@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './App.css';
 
@@ -39,6 +39,31 @@ export default function App() {
   const [userAnswer, setUserAnswer] = useState('');
   const [result, setResult] = useState(null);
   const [questionTimeRemaining, setQuestionTimeRemaining] = useState(QUESTION_TIME);
+
+  // Coin economy — configurable from the parent view
+  const [coinSettings, setCoinSettings] = useState({ correct_coins: 10, wrong_coins: 5, skip_coins: 2, coins_per_penny: 10 });
+  const [coinSettingsDraft, setCoinSettingsDraft] = useState(null);
+  const [coinSettingsStatus, setCoinSettingsStatus] = useState(null); // null | 'saving' | 'saved' | 'error'
+  const [coinToast, setCoinToast] = useState(null); // { delta } | null
+  const coinToastTimeout = useRef(null);
+
+  useEffect(() => {
+    axios.get(`${API_URL}/api/settings/coins`).then(r => {
+      setCoinSettings(r.data);
+      setCoinSettingsDraft(r.data);
+    }).catch(() => {});
+  }, []);
+
+  const flashCoinToast = (delta) => {
+    if (coinToastTimeout.current) clearTimeout(coinToastTimeout.current);
+    setCoinToast({ delta });
+    coinToastTimeout.current = setTimeout(() => setCoinToast(null), 1800);
+  };
+
+  const formatCoinValue = (coins) => {
+    const perPenny = coinSettings.coins_per_penny || 10;
+    return `£${(coins / perPenny / 100).toFixed(2)}`;
+  };
 
   const loadQuestion = async () => {
     try {
@@ -98,14 +123,17 @@ export default function App() {
     const expected = (currentQuestion.answer ?? '').toString().toLowerCase().trim();
     const correct = userAnswer.toLowerCase().trim() === expected;
     try {
-      await axios.post(`${API_URL}/api/progress/update`, {
+      const response = await axios.post(`${API_URL}/api/progress/update`, {
         user_id: currentUser.id,
-        correct,
-        difficulty
+        outcome: correct ? 'correct' : 'incorrect',
+        difficulty,
+        question_text: currentQuestion.text
       });
-      setResult({ correct, expected: currentQuestion.answer });
+      const coinsDelta = response.data.coinsDelta ?? 0;
+      setResult({ correct, expected: currentQuestion.answer, coinsDelta });
       setAnswered(true);
-      setPaperResults(prev => [...prev, { correct, subject: currentQuestion.subject }]);
+      setPaperResults(prev => [...prev, { correct, subject: currentQuestion.subject, coinsDelta }]);
+      flashCoinToast(coinsDelta);
       const progressResponse = await axios.get(`${API_URL}/api/progress/${currentUser.id}`);
       setProgress(progressResponse.data.progress);
       setSessions(progressResponse.data.sessions || []);
@@ -120,7 +148,7 @@ export default function App() {
     setCurrentQuestion(null);
     const correctCount = results.filter(r => r.correct).length;
     const timeTaken = paperStartTime ? Math.round((Date.now() - paperStartTime) / 1000) : 0;
-    const coinsEarned = correctCount * coinsPerCorrect(difficulty);
+    const coinsEarned = results.reduce((sum, r) => sum + (r.coinsDelta || 0), 0);
     try {
       await axios.post(`${API_URL}/api/papers/complete`, {
         user_id: currentUser.id,
@@ -152,20 +180,24 @@ export default function App() {
   // recorded as an incorrect/skipped attempt and the paper moves on immediately.
   const handleSkipQuestion = async () => {
     if (!currentQuestion || answered) return;
-    const newResults = [...paperResults, { correct: false, subject: currentQuestion.subject, skipped: true }];
-    setPaperResults(newResults);
+    let coinsDelta = 0;
     try {
-      await axios.post(`${API_URL}/api/progress/update`, {
+      const response = await axios.post(`${API_URL}/api/progress/update`, {
         user_id: currentUser.id,
-        correct: false,
-        difficulty
+        outcome: 'skipped',
+        difficulty,
+        question_text: currentQuestion.text
       });
+      coinsDelta = response.data.coinsDelta ?? 0;
+      flashCoinToast(coinsDelta);
       const progressResponse = await axios.get(`${API_URL}/api/progress/${currentUser.id}`);
       setProgress(progressResponse.data.progress);
       setSessions(progressResponse.data.sessions || []);
     } catch (err) {
       console.error('Error recording skipped question:', err);
     }
+    const newResults = [...paperResults, { correct: false, subject: currentQuestion.subject, skipped: true, coinsDelta }];
+    setPaperResults(newResults);
 
     const nextIndex = questionIndex + 1;
     if (nextIndex >= PAPER_QUESTIONS) {
@@ -176,21 +208,22 @@ export default function App() {
     }
   };
 
-  // Per-question countdown timer — 1 minute per question, auto-skips on expiry
+  // Per-question countdown timer — 1 minute per question. The updater only
+  // decrements state (kept pure, no side effects); a separate effect below
+  // reacts to it hitting zero and triggers the skip exactly once.
   useEffect(() => {
     if (!paperActive || !currentQuestion || answered) return;
     const interval = setInterval(() => {
-      setQuestionTimeRemaining(t => {
-        if (t <= 1) {
-          clearInterval(interval);
-          handleSkipQuestion();
-          return 0;
-        }
-        return t - 1;
-      });
+      setQuestionTimeRemaining(t => (t > 0 ? t - 1 : 0));
     }, 1000);
     return () => clearInterval(interval);
   }, [paperActive, currentQuestion, answered]);
+
+  useEffect(() => {
+    if (paperActive && currentQuestion && !answered && questionTimeRemaining === 0) {
+      handleSkipQuestion();
+    }
+  }, [questionTimeRemaining]);
 
   // Load sessions when going to progress page
   useEffect(() => {
@@ -278,13 +311,6 @@ export default function App() {
     return d.replace('year', 'Year ');
   };
 
-  const coinsPerCorrect = (d) => {
-    if (d === 'olympiad') return 25;
-    if (d === 'kangaroo') return 20;
-    if (d === 'year8') return 15;
-    return 10;
-  };
-
   const handleUploadPaper = async () => {
     if (!uploadFile || !uploadName.trim()) {
       setUploadStatus('error');
@@ -351,6 +377,39 @@ export default function App() {
       setSelectedChild(updated.length > 0 ? updated[0] : null);
     } catch (err) {
       console.error('Unlink error:', err);
+    }
+  };
+
+  const handleResetCoins = async (childId) => {
+    if (!window.confirm("Reset this child's coin balance to 0?")) return;
+    try {
+      await axios.post(`${API_URL}/api/parent/reset-coins`, { user_id: childId });
+      const fullData = await axios.get(`${API_URL}/api/parent/children/${currentUser.id}`);
+      setChildren(fullData.data);
+      const updated = fullData.data.find(c => c.id === childId);
+      if (updated) setSelectedChild(updated);
+    } catch (err) {
+      console.error('Error resetting coins:', err);
+    }
+  };
+
+  const handleSaveCoinSettings = async () => {
+    setCoinSettingsStatus('saving');
+    try {
+      const payload = {
+        correct_coins: parseInt(coinSettingsDraft.correct_coins, 10) || 0,
+        wrong_coins: parseInt(coinSettingsDraft.wrong_coins, 10) || 0,
+        skip_coins: parseInt(coinSettingsDraft.skip_coins, 10) || 0,
+        coins_per_penny: Math.max(1, parseInt(coinSettingsDraft.coins_per_penny, 10) || 1)
+      };
+      const response = await axios.put(`${API_URL}/api/settings/coins`, payload);
+      setCoinSettings(response.data);
+      setCoinSettingsDraft(response.data);
+      setCoinSettingsStatus('saved');
+      setTimeout(() => setCoinSettingsStatus(null), 2500);
+    } catch (err) {
+      console.error('Error saving coin settings:', err);
+      setCoinSettingsStatus('error');
     }
   };
 
@@ -468,11 +527,17 @@ export default function App() {
           </div>
         )}
 
+        {coinToast && (
+          <div className={`coin-toast ${coinToast.delta >= 0 ? 'gain' : 'loss'}`}>
+            {coinToast.delta >= 0 ? '+' : ''}{coinToast.delta} coins
+          </div>
+        )}
+
         <header className="header">
           <h1>📚 Maths Olympiad</h1>
           <div className="user-info">
             <span>{currentUser.name}</span>
-            <span>💰 {progress?.total_coins || 0}</span>
+            <span>💰 {progress?.total_coins || 0} <small>({formatCoinValue(progress?.total_coins || 0)})</small></span>
             <button onClick={() => setCurrentUser(null)}>Logout</button>
           </div>
         </header>
@@ -529,6 +594,12 @@ export default function App() {
                     {correctCount >= 12 ? '🌟 Excellent!' :
                      correctCount >= 8  ? '👍 Good work!' :
                                           '💪 Keep practising!'}
+                  </p>
+                  <p className="coin-net-summary">
+                    {(() => {
+                      const net = paperResults.reduce((sum, r) => sum + (r.coinsDelta || 0), 0);
+                      return `${net >= 0 ? '+' : ''}${net} coins this paper (${formatCoinValue(Math.abs(net))})`;
+                    })()}
                   </p>
                   {paperResults.some(r => r.skipped) && (
                     <p className="time-up">
@@ -609,8 +680,8 @@ export default function App() {
                     <>
                       <div className={`result ${result.correct ? 'correct' : 'incorrect'}`}>
                         {result.correct
-                          ? `✓ Correct! +${coinsPerCorrect(difficulty)} coins`
-                          : `✗ Incorrect — answer: ${result.expected}`}
+                          ? `✓ Correct! +${result.coinsDelta} coins`
+                          : `✗ Incorrect — answer: ${result.expected} (${result.coinsDelta} coins)`}
                       </div>
                       <div className="solution">
                         <h3>Solution</h3>
@@ -651,6 +722,7 @@ export default function App() {
                   <div className="stat-card">
                     <div className="label">Total Coins</div>
                     <div className="value">{progress.total_coins}</div>
+                    <div className="coin-value-sub">{formatCoinValue(progress.total_coins)}</div>
                   </div>
                 </div>
               )}
@@ -765,6 +837,68 @@ export default function App() {
       <div className="content">
         <div className="parent-dashboard">
 
+          {/* Coin economy settings */}
+          <div className="coin-settings-section">
+            <h3>🪙 Coin Settings</h3>
+            <p className="coin-settings-hint">
+              Configure how coins are earned and lost, and their real-world value.
+            </p>
+            {coinSettingsDraft && (
+              <>
+                <div className="coin-settings-grid">
+                  <label>
+                    Correct answer (+coins)
+                    <input
+                      type="number"
+                      min="0"
+                      value={coinSettingsDraft.correct_coins}
+                      onChange={(e) => setCoinSettingsDraft({ ...coinSettingsDraft, correct_coins: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    Wrong answer (−coins)
+                    <input
+                      type="number"
+                      min="0"
+                      value={coinSettingsDraft.wrong_coins}
+                      onChange={(e) => setCoinSettingsDraft({ ...coinSettingsDraft, wrong_coins: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    Skipped question (−coins)
+                    <input
+                      type="number"
+                      min="0"
+                      value={coinSettingsDraft.skip_coins}
+                      onChange={(e) => setCoinSettingsDraft({ ...coinSettingsDraft, skip_coins: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    Coins per penny
+                    <input
+                      type="number"
+                      min="1"
+                      value={coinSettingsDraft.coins_per_penny}
+                      onChange={(e) => setCoinSettingsDraft({ ...coinSettingsDraft, coins_per_penny: e.target.value })}
+                    />
+                  </label>
+                </div>
+                <p className="coin-settings-rate">
+                  Currently: {coinSettingsDraft.coins_per_penny} coins = 1p
+                </p>
+                <button
+                  className="btn-primary"
+                  onClick={handleSaveCoinSettings}
+                  disabled={coinSettingsStatus === 'saving'}
+                >
+                  {coinSettingsStatus === 'saving' ? 'Saving…' : 'Save Coin Settings'}
+                </button>
+                {coinSettingsStatus === 'saved' && <p className="upload-msg success">✓ Coin settings updated!</p>}
+                {coinSettingsStatus === 'error' && <p className="upload-msg error">Could not save coin settings.</p>}
+              </>
+            )}
+          </div>
+
           {/* Link a child */}
           <div className="link-child-section">
             <h3>Link a Child Account</h3>
@@ -806,7 +940,10 @@ export default function App() {
 
               {child && (
                 <div className="child-report">
-                  <h2>{child.name}'s Progress <span className="username-tag">@{child.username}</span></h2>
+                  <div className="child-report-header">
+                    <h2>{child.name}'s Progress <span className="username-tag">@{child.username}</span></h2>
+                    <button className="btn-quit" onClick={() => handleResetCoins(child.id)}>↺ Reset Coins</button>
+                  </div>
 
                   {childProgress ? (
                     <div className="stats-grid">
@@ -829,6 +966,7 @@ export default function App() {
                       <div className="stat-card">
                         <div className="label">Total Coins</div>
                         <div className="value">💰 {childProgress.total_coins}</div>
+                        <div className="coin-value-sub">{formatCoinValue(childProgress.total_coins)}</div>
                       </div>
                     </div>
                   ) : (
@@ -865,6 +1003,39 @@ export default function App() {
                                 </td>
                                 <td>{formatTimeTaken(s.time_taken)}</td>
                                 <td>💰 {s.coins_earned}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+
+                  <div className="sessions-card">
+                    <h3>Recent Answers — Coin Log</h3>
+                    {(!child.answerLog || child.answerLog.length === 0) ? (
+                      <p className="graph-empty">No answers recorded yet.</p>
+                    ) : (
+                      <table className="sessions-table">
+                        <thead>
+                          <tr>
+                            <th>Date &amp; Time</th>
+                            <th>Question</th>
+                            <th>Outcome</th>
+                            <th>Coins</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {child.answerLog.map(a => {
+                            const dt = new Date(a.created_at);
+                            const outcomeLabel = a.outcome === 'correct' ? 'Correct' : a.outcome === 'skipped' ? 'Skipped' : 'Incorrect';
+                            const pillClass = a.outcome === 'correct' ? 'green' : a.outcome === 'skipped' ? 'amber' : 'red';
+                            return (
+                              <tr key={a.id}>
+                                <td>{dt.toLocaleDateString()} {dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                                <td className="answer-log-question">{a.question_text}</td>
+                                <td><span className={`score-pill ${pillClass}`}>{outcomeLabel}</span></td>
+                                <td>{a.coins_delta > 0 ? '+' : ''}{a.coins_delta}</td>
                               </tr>
                             );
                           })}

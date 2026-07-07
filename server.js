@@ -169,6 +169,37 @@ async function initializeDB() {
       );
     `);
 
+    // Global coin economy settings — a single row (id = 1) configurable from
+    // the parent view. 10 coins = 1p by default.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS coin_settings (
+        id INTEGER PRIMARY KEY DEFAULT 1,
+        correct_coins INTEGER NOT NULL DEFAULT 10,
+        wrong_coins INTEGER NOT NULL DEFAULT 5,
+        skip_coins INTEGER NOT NULL DEFAULT 2,
+        coins_per_penny INTEGER NOT NULL DEFAULT 10,
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    await pool.query(`
+      INSERT INTO coin_settings (id, correct_coins, wrong_coins, skip_coins, coins_per_penny)
+      VALUES (1, 10, 5, 2, 10)
+      ON CONFLICT (id) DO NOTHING;
+    `);
+
+    // Per-answer log so parents can see the coin impact of every response.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS answer_log (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        difficulty VARCHAR(50),
+        question_text TEXT,
+        outcome VARCHAR(20),
+        coins_delta INTEGER,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
     // Seed the demo accounts (idempotent) so the demo login buttons work out of
     // the box. seed.sql only loads questions, not users.
     const demoUsers = [
@@ -1327,21 +1358,36 @@ app.get('/api/questions/:difficulty', async (req, res) => {
 });
 
 // Progress endpoints
+// outcome: 'correct' | 'incorrect' | 'skipped'. Coin amounts come from the
+// configurable coin_settings row so parents can tune the economy.
 app.post('/api/progress/update', async (req, res) => {
-  const { user_id, correct, difficulty } = req.body;
+  const { user_id, outcome, difficulty, question_text } = req.body;
   try {
-    const coinsMap = { olympiad: 25, kangaroo: 20, year8: 15 };
-    const coinsEarned = correct ? (coinsMap[difficulty] || 10) : 0;
+    const settingsResult = await pool.query('SELECT * FROM coin_settings WHERE id = 1');
+    const settings = settingsResult.rows[0];
+
+    const nominalDelta =
+      outcome === 'correct' ? settings.correct_coins :
+      outcome === 'incorrect' ? -settings.wrong_coins :
+      outcome === 'skipped' ? -settings.skip_coins : 0;
+    const correctIncrement = outcome === 'correct' ? 1 : 0;
+
+    const current = await pool.query('SELECT total_coins FROM user_progress WHERE user_id = $1', [user_id]);
+    const currentTotal = current.rows[0]?.total_coins || 0;
+    // Coins never go below zero — clamp here and log the actual (possibly
+    // smaller) change that resulted, so history stays consistent.
+    const newTotal = Math.max(0, currentTotal + nominalDelta);
+    const actualDelta = newTotal - currentTotal;
 
     const progress = await pool.query(
       `UPDATE user_progress
        SET questions_solved = questions_solved + 1,
            correct_answers = correct_answers + $2,
-           total_coins = total_coins + $3,
+           total_coins = $3,
            updated_at = NOW()
        WHERE user_id = $1
        RETURNING *`,
-      [user_id, correct ? 1 : 0, coinsEarned]
+      [user_id, correctIncrement, newTotal]
     );
 
     const today = new Date().toISOString().split('T')[0];
@@ -1350,12 +1396,65 @@ app.post('/api/progress/update', async (req, res) => {
        VALUES ($1, $2, 1, $3)
        ON CONFLICT (user_id, date)
        DO UPDATE SET problems_solved = daily_history.problems_solved + 1, coins_earned = daily_history.coins_earned + $3`,
-      [user_id, today, coinsEarned]
+      [user_id, today, actualDelta]
     );
 
-    res.json(progress.rows[0]);
+    await pool.query(
+      `INSERT INTO answer_log (user_id, difficulty, question_text, outcome, coins_delta)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [user_id, difficulty || null, question_text || null, outcome || null, actualDelta]
+    );
+
+    res.json({ ...progress.rows[0], coinsDelta: actualDelta });
   } catch (err) {
     console.error('Error updating progress:', err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Coin economy settings — configurable from the parent view
+app.get('/api/settings/coins', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM coin_settings WHERE id = 1');
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.put('/api/settings/coins', async (req, res) => {
+  const toNonNegativeInt = (v, fallback) => {
+    const n = parseInt(v, 10);
+    return Number.isFinite(n) && n >= 0 ? n : fallback;
+  };
+  const correct_coins = toNonNegativeInt(req.body.correct_coins, 10);
+  const wrong_coins = toNonNegativeInt(req.body.wrong_coins, 5);
+  const skip_coins = toNonNegativeInt(req.body.skip_coins, 2);
+  const coins_per_penny = Math.max(1, toNonNegativeInt(req.body.coins_per_penny, 10));
+  try {
+    const result = await pool.query(
+      `UPDATE coin_settings
+       SET correct_coins = $1, wrong_coins = $2, skip_coins = $3, coins_per_penny = $4, updated_at = NOW()
+       WHERE id = 1
+       RETURNING *`,
+      [correct_coins, wrong_coins, skip_coins, coins_per_penny]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Reset a child's coin balance back to zero (parent action)
+app.post('/api/parent/reset-coins', async (req, res) => {
+  const { user_id } = req.body;
+  try {
+    const result = await pool.query(
+      `UPDATE user_progress SET total_coins = 0, updated_at = NOW() WHERE user_id = $1 RETURNING *`,
+      [user_id]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
@@ -1436,7 +1535,11 @@ app.get('/api/parent/children/:parent_id', async (req, res) => {
         `SELECT * FROM paper_sessions WHERE user_id = $1 ORDER BY completed_at DESC LIMIT 10`,
         [child.id]
       );
-      return { ...child, progress: progress.rows[0] || null, sessions: sessions.rows };
+      const answerLog = await pool.query(
+        `SELECT * FROM answer_log WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20`,
+        [child.id]
+      );
+      return { ...child, progress: progress.rows[0] || null, sessions: sessions.rows, answerLog: answerLog.rows };
     }));
 
     res.json(result);

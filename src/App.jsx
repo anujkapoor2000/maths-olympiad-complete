@@ -4,7 +4,9 @@ import './App.css';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 const PAPER_QUESTIONS = 15;
-const QUESTION_TIME = 60; // 1 minute per question, in seconds
+// Per-question timer, in seconds, by difficulty tier.
+const QUESTION_TIME_BY_LEVEL = { easy: 60, medium: 90, hard: 135 };
+const getQuestionTime = (lv) => QUESTION_TIME_BY_LEVEL[lv] || QUESTION_TIME_BY_LEVEL.medium;
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -39,7 +41,7 @@ export default function App() {
   const [answered, setAnswered] = useState(false);
   const [userAnswer, setUserAnswer] = useState('');
   const [result, setResult] = useState(null);
-  const [questionTimeRemaining, setQuestionTimeRemaining] = useState(QUESTION_TIME);
+  const [questionTimeRemaining, setQuestionTimeRemaining] = useState(getQuestionTime(level));
 
   // Coin economy — configurable from the parent view
   const [coinSettings, setCoinSettings] = useState({ easy_coins: 4, medium_coins: 6, hard_coins: 10, wrong_coins: 5, skip_coins: 2, coins_per_penny: 10 });
@@ -73,7 +75,7 @@ export default function App() {
       setAnswered(false);
       setUserAnswer('');
       setResult(null);
-      setQuestionTimeRemaining(QUESTION_TIME);
+      setQuestionTimeRemaining(getQuestionTime(response.data?.level || level));
     } catch (err) {
       console.error('Error loading question:', err);
     }
@@ -91,7 +93,7 @@ export default function App() {
       setAnswered(false);
       setUserAnswer('');
       setResult(null);
-      setQuestionTimeRemaining(QUESTION_TIME);
+      setQuestionTimeRemaining(getQuestionTime(response.data?.level || level));
     } catch (err) {
       console.error('Error loading question:', err);
     }
@@ -211,9 +213,10 @@ export default function App() {
     }
   };
 
-  // Per-question countdown timer — 1 minute per question. The updater only
-  // decrements state (kept pure, no side effects); a separate effect below
-  // reacts to it hitting zero and triggers the skip exactly once.
+  // Per-question countdown timer — duration depends on the question's tier
+  // (see getQuestionTime). The updater only decrements state (kept pure, no
+  // side effects); a separate effect below reacts to it hitting zero and
+  // triggers the skip exactly once.
   useEffect(() => {
     if (!paperActive || !currentQuestion || answered) return;
     const interval = setInterval(() => {
@@ -609,7 +612,7 @@ export default function App() {
               {!paperActive && !paperComplete && (
                 <div className="paper-start">
                   <h2>Ready for a challenge?</h2>
-                  <p>{PAPER_QUESTIONS} questions &middot; 1 minute per question &middot; {difficultyLabel(difficulty)} &middot; {levelLabel(level)}</p>
+                  <p>{PAPER_QUESTIONS} questions &middot; {getQuestionTime(level)} seconds per question &middot; {difficultyLabel(difficulty)} &middot; {levelLabel(level)}</p>
                   <button className="btn-primary" onClick={startPaper}>Start Paper</button>
                 </div>
               )}

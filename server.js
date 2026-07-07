@@ -80,6 +80,12 @@ async function initializeDB() {
       ALTER TABLE questions ADD COLUMN IF NOT EXISTS image_url VARCHAR(500);
     `);
 
+    // Difficulty tier within a year/kangaroo level: 'easy' | 'medium' | 'hard'.
+    // Nullable so existing untagged questions keep working with tier filters.
+    await pool.query(`
+      ALTER TABLE questions ADD COLUMN IF NOT EXISTS level VARCHAR(20);
+    `);
+
     // Patch image URLs onto already-seeded Kangaroo questions (idempotent)
     const imagePatches = [
       [1, '/images/jk2025/q1.png'],
@@ -170,7 +176,9 @@ async function initializeDB() {
     `);
 
     // Global coin economy settings — a single row (id = 1) configurable from
-    // the parent view. 10 coins = 1p by default.
+    // the parent view. 10 coins = 1p by default. Correct-answer rewards are
+    // tiered by question difficulty (easy/medium/hard); wrong/skip penalties
+    // stay flat regardless of tier.
     await pool.query(`
       CREATE TABLE IF NOT EXISTS coin_settings (
         id INTEGER PRIMARY KEY DEFAULT 1,
@@ -180,6 +188,15 @@ async function initializeDB() {
         coins_per_penny INTEGER NOT NULL DEFAULT 10,
         updated_at TIMESTAMP DEFAULT NOW()
       );
+    `);
+    await pool.query(`
+      ALTER TABLE coin_settings ADD COLUMN IF NOT EXISTS easy_coins INTEGER NOT NULL DEFAULT 4;
+    `);
+    await pool.query(`
+      ALTER TABLE coin_settings ADD COLUMN IF NOT EXISTS medium_coins INTEGER NOT NULL DEFAULT 6;
+    `);
+    await pool.query(`
+      ALTER TABLE coin_settings ADD COLUMN IF NOT EXISTS hard_coins INTEGER NOT NULL DEFAULT 10;
     `);
     await pool.query(`
       INSERT INTO coin_settings (id, correct_coins, wrong_coins, skip_coins, coins_per_penny)
@@ -2004,6 +2021,1126 @@ async function initializeDB() {
       console.log('Seeded 100 Kangaroo Practice Bank questions');
     }
 
+    // Seed verified questions from real Kangaroo competition papers (idempotent),
+    // tagged with a difficulty tier (easy/medium/hard) matching the papers'
+    // own 3/4/5-point structure.
+    const kangarooPdfCheck = await pool.query(
+      "SELECT COUNT(*) FROM questions WHERE source IN ('Kangaroo 2022 Austria', 'Kangaroo 2021 Brazil')"
+    );
+    if (parseInt(kangarooPdfCheck.rows[0].count) === 0) {
+      const kangarooPdfQuestions = [
+        {
+          text: "What is (20+22) ÷ (20−22)?",
+          options: ["-42","-21","-2","22","42"],
+          answer: "-21",
+          solution: "20+22 = 42 and 20−22 = −2. So the answer is 42 ÷ (−2) = −21.",
+          subject: "number",
+          level: "easy",
+          source: "Kangaroo 2022 Austria"
+        },
+        {
+          text: "Beate arranges five cards showing 4, 8, 31, 59 and 107 next to each other so that the smallest possible nine-digit number is created. Which card ends up furthest on the right?",
+          options: ["4","8","31","59","107"],
+          answer: "8",
+          solution: "To make the smallest number, place cards with the smallest leading digit first: 107, then 31, then 4, then 59, then 8, giving 107314598. The card furthest right is 8.",
+          subject: "logic",
+          level: "easy",
+          source: "Kangaroo 2022 Austria"
+        },
+        {
+          text: "The numbers 3, 4, 5, 6, 7 are written inside five circles of a shape (one number per circle). The product of the numbers in the four outer circles is 360. Which number is in the inner circle?",
+          options: ["3","4","5","6","7"],
+          answer: "7",
+          solution: "The product of all five numbers is 3×4×5×6×7 = 2520. The inner number is 2520 ÷ 360 = 7.",
+          subject: "number",
+          level: "easy",
+          source: "Kangaroo 2022 Austria"
+        },
+        {
+          text: "Anna, Beatrice and Clara altogether are 15 years old. Anna and Beatrice together are 11 years old. Beatrice and Clara together are 12 years old. How old is the oldest of the three?",
+          options: ["4","5","6","7","8"],
+          answer: "8",
+          solution: "Clara = 15−11 = 4. Beatrice = 12−4 = 8. Anna = 11−8 = 3. The oldest is Beatrice, aged 8.",
+          subject: "algebra",
+          level: "easy",
+          source: "Kangaroo 2022 Austria"
+        },
+        {
+          text: "Kengu jumps along a number line. He starts at 0, then always does two big jumps of 3 followed by three small jumps of 1, over and over again (so he lands on 3, 6, 7, 8, 9, 12, 15, 16, 17, 18, ...). On which of the following numbers will he land?",
+          options: ["82","83","84","85","86"],
+          answer: "84",
+          solution: "Each full cycle of 5 jumps covers 9 units and lands on positions 9k+3, 9k+6, 9k+7, 9k+8 or 9k (relative to the start of the cycle). Checking 82-86 mod 9: only 84 = 9×9+3 matches a landing position.",
+          subject: "number",
+          level: "easy",
+          source: "Kangaroo 2022 Austria"
+        },
+        {
+          text: "Otto attaches his number plate upside down, but luckily it looks exactly the same either way. Which of the following number plates could be Otto's?",
+          options: ["04 NSN 40","60 SOS 09","80 BNB 08","06 HNH 60","08 NBN 80"],
+          answer: "60 SOS 09",
+          solution: "A plate looks the same upside down if reversing it and rotating each character 180° gives back the same plate. Digits 6 and 9 swap, and 0, S and O are unchanged by rotation. Checking \"60 SOS 09\": reversed and rotated gives \"60 SOS 09\" again. The other options contain characters (4 or B) that have no valid 180° rotation.",
+          subject: "logic",
+          level: "easy",
+          source: "Kangaroo 2022 Austria"
+        },
+        {
+          text: "There are five gaps in the calculation 6 _ 9 _ 12 _ 15 _ 18 _ 21 = 45. Adriana wants to write a \"+\" into four of the gaps and a \"−\" into one of the gaps so the equation is correct. Where does the \"−\" go?",
+          options: ["between 6 and 9","between 9 and 12","between 12 and 15","between 15 and 18","between 18 and 21"],
+          answer: "between 15 and 18",
+          solution: "Adding everything gives 6+9+12+15+18+21 = 81. We need to reduce this by 81−45 = 36. Changing a \"+\" to \"−\" before a number x reduces the total by 2x, so 2x=36 means x=18. The minus goes before 18, i.e. between 15 and 18.",
+          subject: "algebra",
+          level: "medium",
+          source: "Kangaroo 2022 Austria"
+        },
+        {
+          text: "The distance between two shelves in Monika's kitchen is 36 cm. A stack of 8 identical glasses is 42 cm high, and a stack of 2 such glasses is 18 cm high. How many glasses does the biggest stack have that will still fit between the two shelves?",
+          options: ["3","4","5","6","7"],
+          answer: "6",
+          solution: "Each extra glass adds the same height d. From 8 glasses (42 cm) and 2 glasses (18 cm): 6d = 42−18 = 24, so d = 4 cm, and one glass alone is 18−4 = 14 cm. Height of n glasses = 14+4(n−1) = 10+4n. Setting 10+4n ≤ 36 gives n ≤ 6.5, so the biggest stack that fits has 6 glasses.",
+          subject: "algebra",
+          level: "medium",
+          source: "Kangaroo 2022 Austria"
+        },
+        {
+          text: "On an ordinary die, numbers on opposite sides always add up to 7. Four such dice are glued together in a straight row. All numbers still visible on the outside are added together. What is the minimum possible total?",
+          options: ["52","54","56","58","60"],
+          answer: "58",
+          solution: "Each die's face values sum to 21, so four dice total 84. Each of the two interior dice has its two touching faces along the row's axis, which are always an opposite pair (summing to 7) — this hidden sum can't be improved by rotation. Each of the two end dice hides only one face, which can be rotated to show 6 there, hiding as much as possible. Minimum hidden = 7+7+6+6 = 26, so minimum visible = 84−26 = 58.",
+          subject: "geometry",
+          level: "medium",
+          source: "Kangaroo 2022 Austria"
+        },
+        {
+          text: "How many integers between 100 and 300 have only odd digits?",
+          options: ["25","50","75","100","150"],
+          answer: "25",
+          solution: "For a number in this range to have only odd digits, the hundreds digit must be odd and the number must still be under 300, so the hundreds digit can only be 1. The tens and units digits can each be any of 1,3,5,7,9 (5 choices each). Total = 5×5 = 25.",
+          subject: "number",
+          level: "medium",
+          source: "Kangaroo 2022 Austria"
+        },
+        {
+          text: "There are two clocks in an office. One gains 1 minute every hour and the other loses 2 minutes every hour. Both were set to the correct time yesterday, but today one clock shows 11:00 and the other shows 12:00. At what time were they set yesterday?",
+          options: ["23:00","19:40","15:40","14:00","11:20"],
+          answer: "15:40",
+          solution: "In t hours, the fast clock shows an elapsed time of t×61/60 hours and the slow clock t×58/60 hours. Their displayed times differ by t×3/60 hours, which must equal the 1-hour gap between 11:00 and 12:00, so t=20 hours. The fast clock then shows start+20h20min=12:00, giving a start time of 15:40 (confirmed by the slow clock: start+19h20min=11:00 also gives 15:40).",
+          subject: "algebra",
+          level: "medium",
+          source: "Kangaroo 2022 Austria"
+        },
+        {
+          text: "Werner has written down some numbers whose sum is 22. Ria subtracts each number from 7 and writes down the results; the sum of Ria's numbers is 34. How many numbers did Werner write down?",
+          options: ["7","8","9","10","11"],
+          answer: "8",
+          solution: "If Werner wrote n numbers, the sum of Ria's numbers is 7n minus the sum of Werner's numbers: 7n − 22 = 34, so 7n = 56 and n = 8.",
+          subject: "algebra",
+          level: "medium",
+          source: "Kangaroo 2022 Austria"
+        },
+        {
+          text: "Two identical bricks can be joined face-to-face in three different ways, giving cuboids with surface areas 72, 96 and 102 cm². What is the surface area, in cm², of a single brick?",
+          options: ["36","48","52","54","60"],
+          answer: "54",
+          solution: "If a single brick has surface area S, joining two bricks along one face removes two copies of that face's area from the total 2S. Summing the three joined surface areas counts every face-pair exactly once via 6S − 2(sum of the three face areas), and since the three face-pair areas of a cuboid sum to exactly S/2 × 2 = S, the three results add up to 5S. So 5S = 72+96+102 = 270, giving S = 54.",
+          subject: "geometry",
+          level: "medium",
+          source: "Kangaroo 2022 Austria"
+        },
+        {
+          text: "Jenny writes numbers into a 3×3 table so that the sums of the four numbers in each 2×2 area of the table are equal. Three of the four corner cells already show 2 (top-left), 4 (top-right) and 3 (bottom-right). What number goes in the bottom-left corner?",
+          options: ["0","1","4","5","6"],
+          answer: "1",
+          solution: "For this kind of grid, equal 2×2 sums force the identity (top-left)+(bottom-right) = (top-right)+(bottom-left), regardless of the interior values. So 2+3 = 4+(bottom-left), giving bottom-left = 1.",
+          subject: "algebra",
+          level: "hard",
+          source: "Kangaroo 2022 Austria"
+        },
+        {
+          text: "A shape is made of a triangle and a circle that partially overlap. The grey overlapping area is 45% of the entire shape's area, and the white part of the triangle (not overlapping the circle) is 40% of the entire shape's area. What percentage of the circle's own area is white (i.e. outside the triangle)?",
+          options: ["20%","25%","30%","35%","50%"],
+          answer: "25%",
+          solution: "Taking the whole shape as 100%: white-circle-part = 100 − 45 (grey) − 40 (white triangle) = 15%. The circle's total area = grey + white-circle-part = 45+15 = 60%. So the white part of the circle is 15/60 = 25% of the circle's own area.",
+          subject: "geometry",
+          level: "hard",
+          source: "Kangaroo 2022 Austria"
+        },
+        {
+          text: "By bike, Marc takes 20 minutes to go from home to school and back (constant speed); by foot the same round trip takes 60 minutes (constant speed). One day he biked partway to Eva's house (on the way to school), left the bike, and walked the rest of the way to school. Coming home he walked back to Eva's house, then biked the rest of the way home. The whole journey took 52 minutes. What fraction of the total distance (there and back) did he cover by bike?",
+          options: ["1/6","1/5","1/4","1/3","1/2"],
+          answer: "1/5",
+          solution: "One-way biking takes 10 minutes, one-way walking takes 30 minutes. If a fraction f of the one-way distance is biked, each one-way leg (there or back) takes 10f + 30(1−f) minutes, and the whole day takes twice that: 2(10f+30(1−f)) = 52, giving 10f+30−30f=26, so f = 1/5. Since both the outward and return legs use the same fraction f by bike, the overall fraction covered by bike is also 1/5.",
+          subject: "algebra",
+          level: "hard",
+          source: "Kangaroo 2022 Austria"
+        },
+        {
+          text: "Villages A, B, C and D lie (in some order) along a straight road. A and C are 75 km apart, B and D are 45 km apart, and B and C are 20 km apart. Which of the following distances cannot be the distance from A to D?",
+          options: ["10 km","50 km","80 km","100 km","140 km"],
+          answer: "80 km",
+          solution: "Placing C at 0, A is at +75 or −75, and B is at +20 or −20 (from C), with D at B±45. Checking all combinations, the possible values of |A−D| are exactly {10, 50, 100, 140} — 80 km never occurs.",
+          subject: "algebra",
+          level: "hard",
+          source: "Kangaroo 2022 Austria"
+        },
+        {
+          text: "A painter wants to mix 2 litres of blue paint with 3 litres of yellow paint to get 5 litres of green paint, but accidentally uses 3 litres of blue and 2 litres of yellow. What is the minimum amount of this wrong green paint he must throw away so that, after adding only more blue or yellow paint, he can end up with exactly 5 litres of the correct shade?",
+          options: ["5/3 litre","3/2 litre","2/3 litre","3/5 litre","5/9 litre"],
+          answer: "5/3 litre",
+          solution: "After discarding X litres of the 3:2 mixture, the remaining blue is 3−0.6X and remaining yellow is 2−0.4X. Since he can only add paint (not remove more), he needs remaining blue ≤ 2 (the correct final blue amount): 3−0.6X ≤ 2, giving X ≥ 5/3. This is the binding constraint, so the minimum is 5/3 litre.",
+          subject: "algebra",
+          level: "hard",
+          source: "Kangaroo 2022 Austria"
+        },
+        {
+          text: "What is the minimum number of cells that must be coloured in a 5×5 grid so that every possible 1×4 rectangle and every 4×1 rectangle within the grid contains at least one coloured cell?",
+          options: ["5","6","7","8","9"],
+          answer: "6",
+          solution: "Each row has two overlapping 1×4 windows, and each column has two overlapping 4×1 windows — 20 windows in total that must each contain a coloured cell. A careful arrangement of just 6 coloured cells can hit every one of these windows, and no arrangement of 5 cells can (checked exhaustively).",
+          subject: "logic",
+          level: "hard",
+          source: "Kangaroo 2022 Austria"
+        },
+        {
+          text: "A bear always lies on Monday, Tuesday and Wednesday (and tells the truth on other days). A panther always lies on Thursday, Friday and Saturday (and tells the truth on other days). The bear says \"Yesterday was one of my lying days\" and the panther says \"Yesterday was also one of my lying days.\" On which day did this conversation take place?",
+          options: ["Thursday","Friday","Saturday","Sunday","Monday"],
+          answer: "Thursday",
+          solution: "Checking each day of the week for whether the bear's statement matches whether the bear is truthful that day, and likewise for the panther, only Thursday makes both statements consistent with each animal's own lying schedule.",
+          subject: "logic",
+          level: "hard",
+          source: "Kangaroo 2022 Austria"
+        },
+        {
+          text: "Some points are marked on a line. Renate marks another point between every pair of adjacent points, and repeats this process three more times (four times in total). Now there are 225 points. How many points were there to begin with?",
+          options: ["10","12","15","16","25"],
+          answer: "15",
+          solution: "Each round transforms a count of k points into 2k−1 points (a new point is added in each of the k−1 gaps). Reversing four rounds from 225: 225→113→57→29→15. So there were 15 points to begin with.",
+          subject: "number",
+          level: "hard",
+          source: "Kangaroo 2022 Austria"
+        },
+        {
+          text: "There are 2022 kangaroos and some koalas living in seven parks. In each park, the number of kangaroos equals the number of koalas in all the other parks combined. How many koalas in total live in the seven parks?",
+          options: ["288","337","576","674","2022"],
+          answer: "337",
+          solution: "If K is the total number of koalas, the kangaroos in park i equal K minus the koalas in park i. Summing over all seven parks, total kangaroos = 7K − K = 6K = 2022, so K = 337.",
+          subject: "algebra",
+          level: "hard",
+          source: "Kangaroo 2022 Austria"
+        },
+        {
+          text: "What is the value of (20×21) ÷ (2+0+2+1)?",
+          options: ["42","64","80","84","105"],
+          answer: "84",
+          solution: "20×21 = 420, and 2+0+2+1 = 5. So the answer is 420 ÷ 5 = 84.",
+          subject: "number",
+          level: "easy",
+          source: "Kangaroo 2021 Brazil"
+        },
+        {
+          text: "How many four-digit numbers have digits that are consecutive and strictly increasing from left to right (like 2345)?",
+          options: ["5","6","7","8","9"],
+          answer: "6",
+          solution: "If the first digit is d, the digits are d, d+1, d+2, d+3, which all stay within 0-9 only when d is 1 through 6 (d can't be 0, since the number would then not be a genuine four-digit number). This gives 1234, 2345, 3456, 4567, 5678, 6789 — 6 numbers.",
+          subject: "number",
+          level: "easy",
+          source: "Kangaroo 2021 Brazil"
+        },
+        {
+          text: "A student correctly added two two-digit numbers, AB and CD, and got 137. What answer would he get if he added the four-digit numbers ADCB and CBAD (formed from the same digits A, B, C, D)?",
+          options: ["13 737","13 837","14 747","23 737","137 137"],
+          answer: "13 837",
+          solution: "ADCB + CBAD = 1010(A+C) + 101(B+D) = 101×(10(A+C)+(B+D)) = 101×(AB+CD) = 101×137 = 13 837 — this holds for any digits satisfying AB+CD=137.",
+          subject: "algebra",
+          level: "easy",
+          source: "Kangaroo 2021 Brazil"
+        },
+        {
+          text: "Byron is 5cm taller than Aaron but 10cm shorter than Caron. Darren is 10cm taller than Caron but 5cm shorter than Erin. Which statement is true?",
+          options: ["Aaron and Erin are equal heights","Aaron is 10cm taller than Erin","Aaron is 10cm shorter than Erin","Aaron is 30cm taller than Erin","Aaron is 30cm shorter than Erin"],
+          answer: "Aaron is 30cm shorter than Erin",
+          solution: "Let Aaron = x. Then Byron = x+5, Caron = Byron+10 = x+15, Darren = Caron+10 = x+25, Erin = Darren+5 = x+30. So Erin is 30cm taller than Aaron, i.e. Aaron is 30cm shorter than Erin.",
+          subject: "algebra",
+          level: "easy",
+          source: "Kangaroo 2021 Brazil"
+        },
+        {
+          text: "A rectangular chocolate bar is made of equal squares. Neil breaks off two complete strips of squares and eats the 12 squares he gets. Later, Jack breaks off one complete strip from the same bar and eats the 9 squares he gets. How many squares are left in the bar?",
+          options: ["72","63","54","45","36"],
+          answer: "45",
+          solution: "Neil's two strips give 12 squares, so each strip (a full row) has 6 squares — the bar is 6 squares wide. After Neil removes 2 rows, Jack's strip (a full column of the remaining bar) has 9 squares, so the remaining height is 9 rows, making the original height 9+2=11 rows. The original bar had 6×11=66 squares; after removing 12+9=21, there are 66−21=45 squares left.",
+          subject: "number",
+          level: "medium",
+          source: "Kangaroo 2021 Brazil"
+        },
+        {
+          text: "A jar one-fifth filled with water weighs 560g. The same jar four-fifths filled with water weighs 740g. What is the weight of the empty jar?",
+          options: ["60 g","112 g","180 g","300 g","500 g"],
+          answer: "500 g",
+          solution: "The extra 3/5 of the jar's water weighs 740−560=180g, so a full jar of water weighs 300g. The empty jar weighs 560 minus one-fifth of 300 (=60), which is 500g.",
+          subject: "algebra",
+          level: "medium",
+          source: "Kangaroo 2021 Brazil"
+        },
+        {
+          text: "Costa builds a fence from 25 planks, each 30cm long, with the same slight overlap between every pair of adjacent planks. The total fence length is 6.9 metres (690cm). What is the overlap, in cm, between adjacent planks?",
+          options: ["2,4","2,5","3","4,8","5"],
+          answer: "2,5",
+          solution: "With 25 planks there are 24 overlaps. Total length = 25×30 − 24×overlap = 690, so 750 − 24×overlap = 690, giving overlap = 60/24 = 2.5cm.",
+          subject: "algebra",
+          level: "medium",
+          source: "Kangaroo 2021 Brazil"
+        },
+        {
+          text: "Five identical right-angled triangles form a star when their larger acute angles all touch at the centre. How many of these triangles are needed to form a different star where their smaller acute angles all touch at the centre instead?",
+          options: ["10","12","18","20","24"],
+          answer: "20",
+          solution: "Five copies of the larger acute angle meeting at a point sum to 360°, so the larger acute angle is 360/5=72°. Since it's a right triangle, the smaller acute angle is 90−72=18°. To surround a point with copies of an 18° angle needs 360/18=20 triangles.",
+          subject: "geometry",
+          level: "medium",
+          source: "Kangaroo 2021 Brazil"
+        },
+        {
+          text: "There are 20 questions in a quiz. Each correct answer scores 7 points, each wrong answer scores −4 points, and each blank answer scores 0. Eric scored 100 points in total. How many questions did he leave blank?",
+          options: ["0","1","2","3","4"],
+          answer: "1",
+          solution: "With c correct, w wrong and b blank (c+w+b=20) and 7c−4w=100, the only solution with all values non-negative is c=16, w=3, b=1.",
+          subject: "algebra",
+          level: "medium",
+          source: "Kangaroo 2021 Brazil"
+        },
+        {
+          text: "A box of fruit contains twice as many apples as pears. Christy and Lily divided all the fruit so that Christy ended up with twice as many pieces of fruit as Lily. Which statement must always be true?",
+          options: ["Christy took at least one pear.","Christy took twice as many apples as pears.","Christy took twice as many apples as Lily.","Christy took as many apples as Lily got pears.","Christy took as many pears as Lily got apples."],
+          answer: "Christy took as many pears as Lily got apples.",
+          solution: "Let total pears = p, apples = 2p, so total fruit = 3p, meaning Christy has 2p pieces and Lily has p pieces. If Christy's pears = p_C, her apples = 2p−p_C. Lily's apples = 2p − Christy's apples = p_C exactly. So Christy's pears always equal Lily's apples — this holds regardless of the specific split.",
+          subject: "algebra",
+          level: "medium",
+          source: "Kangaroo 2021 Brazil"
+        },
+        {
+          text: "Three villages, Downend, Uphill and Middleton, are connected by direct paths. From Downend to Uphill, the detour via Middleton is 1km longer than the direct path. From Downend to Middleton, the detour via Uphill is 5km longer than the direct path. From Uphill to Middleton, the detour via Downend is 7km longer than the direct path. How long is the shortest of the three direct paths?",
+          options: ["1 km","2 km","3 km","4 km","5 km"],
+          answer: "3 km",
+          solution: "Let the direct distances be DU, DM, UM. The conditions give DM+UM=DU+1, DU+UM=DM+5, DU+DM=UM+7. Adding all three: DU+DM+UM=13. Solving the system gives DU=6, DM=4, UM=3. The shortest direct path is Uphill–Middleton at 3 km.",
+          subject: "algebra",
+          level: "medium",
+          source: "Kangaroo 2021 Brazil"
+        },
+        {
+          text: "In a fraction, both the numerator and denominator are positive. The numerator is increased by 40%. By what percentage should the denominator be decreased so that the new fraction is double the original fraction?",
+          options: ["10%","20%","30%","40%","50%"],
+          answer: "30%",
+          solution: "If the original fraction is N/D, the new numerator is 1.4N. We need 1.4N/D' = 2(N/D), so D' = 0.7D — a 30% decrease.",
+          subject: "number",
+          level: "hard",
+          source: "Kangaroo 2021 Brazil"
+        },
+        {
+          text: "The 6-digit number 2ABCDE is multiplied by 3, giving the 6-digit number ABCDE2. What is the sum of the digits of this number?",
+          options: ["24","27","30","33","36"],
+          answer: "27",
+          solution: "Writing X=ABCDE, we need 3(200000+X)=10X+2, which gives 7X=599998, so X=85714. Then 2ABCDE=285714 and ABCDE2=857142 (indeed 285714×3=857142). Both use the digits 2,8,5,7,1,4, whose sum is 27.",
+          subject: "number",
+          level: "hard",
+          source: "Kangaroo 2021 Brazil"
+        },
+        {
+          text: "A box contains only green, red, blue and yellow counters. Any 27 counters chosen always include at least one green; any 25 always include at least one red; any 22 always include at least one blue; any 17 always include at least one yellow. What is the largest possible number of counters in the box?",
+          options: ["27","29","51","87","91"],
+          answer: "29",
+          solution: "The conditions mean: (red+blue+yellow) ≤ 26, (green+blue+yellow) ≤ 24, (green+red+yellow) ≤ 21, (green+red+blue) ≤ 16. Adding all four inequalities gives 3×(total) ≤ 87, so total ≤ 29 — and 29 is achievable (e.g. green=3, red=5, blue=8, yellow=13).",
+          subject: "logic",
+          level: "hard",
+          source: "Kangaroo 2021 Brazil"
+        },
+        {
+          text: "2021 kangaroos, numbered 1 to 2021, are each coloured red, grey or blue so that any three consecutive kangaroos include all three colours. Bruce guesses: kangaroo 2 is grey, kangaroo 20 is blue, kangaroo 202 is red, kangaroo 1002 is blue, kangaroo 2021 is grey — and only one guess is wrong. Which kangaroo's colour did he guess incorrectly?",
+          options: ["2","20","202","1002","2021"],
+          answer: "20",
+          solution: "The \"any 3 consecutive have all 3 colours\" rule forces the colouring to repeat with period 3. Kangaroos 2, 20 and 2021 all share the same position in that 3-cycle (since 2, 20 and 2021 all leave remainder 2 when divided by 3), so they must all be the same colour. Since 2 and 2021 both being \"grey\" agree, kangaroo 20's guess of \"blue\" must be the single error.",
+          subject: "logic",
+          level: "hard",
+          source: "Kangaroo 2021 Brazil"
+        },
+        {
+          text: "A 3×4×5 cuboid is made of 60 identical small cubes. A termite eats along the space diagonal from one corner to the opposite corner (which passes through no internal edges). How many small cubes does it pass through?",
+          options: ["8","9","10","11","12"],
+          answer: "10",
+          solution: "The number of unit cubes a space diagonal crosses in an a×b×c box is a+b+c−gcd(a,b)−gcd(b,c)−gcd(a,c)+gcd(a,b,c). For 3,4,5 (all pairwise coprime): 3+4+5−1−1−1+1 = 10.",
+          subject: "geometry",
+          level: "hard",
+          source: "Kangaroo 2021 Brazil"
+        },
+        {
+          text: "In a town there are 21 knights (always truthful) and 2000 knaves (always lying). A wizard paired up 2020 of these 2021 people into 1010 pairs; each person described their partner as a knight or a knave. In total, 2000 people were called \"knight\" and 20 were called \"knave.\" How many pairs consisted of two knaves?",
+          options: ["980","985","990","995","1000"],
+          answer: "995",
+          solution: "A knight-knight pair calls each other \"knight\" (2 knight-labels); a mixed pair has both people called \"knave\" (the knight truthfully calls the knave a knave, and the knave lies about the knight, also calling them \"knave\"); a knave-knave pair calls each other \"knight\" (2 knight-labels), since each must lie about the other's true \"knave\" status. So mixed pairs = 20÷2 = 10. The 1 unpaired person must be a knight (to make the knight-count work out), leaving 20 knights across 1010 pairs: 2×(knight-knight pairs)+10=20, so knight-knight pairs=5, and knave-knave pairs = 1010−10−5 = 995.",
+          subject: "logic",
+          level: "hard",
+          source: "Kangaroo 2021 Brazil"
+        },
+        {
+          text: "In a 6-team round-robin tournament (each team plays every other team once), each round has 3 simultaneous matches over 5 rounds. A TV station picked one match per round to broadcast: round 1: A-B, round 2: C-D, round 3: A-E, round 4: E-F, round 5: A-C. In which round do teams D and F play each other?",
+          options: ["1","2","3","4","5"],
+          answer: "1",
+          solution: "Team A's five opponents across the rounds must be B, C, D, E, F in some order; from the known matches A already has B (round1), E (round3) and C (round5), leaving D and F for rounds 2 and 4. Since round 2 already has C-D and round 4 already has E-F, A must play F in round 2 and D in round 4. Working through the remaining pairings so every pair of teams meets exactly once shows the unique valid schedule has D playing F in round 1.",
+          subject: "logic",
+          level: "hard",
+          source: "Kangaroo 2021 Brazil"
+        }
+      ];
+
+      for (const q of kangarooPdfQuestions) {
+        await pool.query(
+          `INSERT INTO questions (difficulty, type, text, answer, options, solution, source, subject, level)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          ['kangaroo', 'multipleChoice', q.text, q.answer, JSON.stringify(q.options), q.solution, q.source, q.subject, q.level]
+        );
+      }
+      console.log('Seeded 40 verified Kangaroo questions from real competition papers');
+    }
+
+    // Seed tiered easy/medium/hard practice questions for Year 6, 7 and 8
+    // (idempotent), so each year level supports the same difficulty-tier
+    // selection as the Kangaroo bank.
+    const yearTierCheck = await pool.query(
+      "SELECT COUNT(*) FROM questions WHERE source = 'Year Tier Practice Bank'"
+    );
+    if (parseInt(yearTierCheck.rows[0].count) === 0) {
+      const yearTierQuestions = [
+        {
+          difficulty: "year6",
+          level: "easy",
+          type: "multipleChoice",
+          text: "What is 10% of 50?",
+          answer: "5",
+          options: ["8","5","45","10","0"],
+          solution: "10% of 50 = (10/100) × 50 = 5.",
+          subject: "number"
+        },
+        {
+          difficulty: "year6",
+          level: "easy",
+          type: "multipleChoice",
+          text: "What is 20% of 40?",
+          answer: "8",
+          options: ["3","32","13","12","8"],
+          solution: "20% of 40 = (20/100) × 40 = 8.",
+          subject: "number"
+        },
+        {
+          difficulty: "year6",
+          level: "easy",
+          type: "multipleChoice",
+          text: "What is 25% of 80?",
+          answer: "20",
+          options: ["60","15","20","25","28"],
+          solution: "25% of 80 = (25/100) × 80 = 20.",
+          subject: "number"
+        },
+        {
+          difficulty: "year6",
+          level: "easy",
+          type: "multipleChoice",
+          text: "What is 50% of 60?",
+          answer: "30",
+          options: ["35","25","30","33","36"],
+          solution: "50% of 60 = (50/100) × 60 = 30.",
+          subject: "number"
+        },
+        {
+          difficulty: "year6",
+          level: "easy",
+          type: "multipleChoice",
+          text: "What is 10% of 90?",
+          answer: "9",
+          options: ["14","4","18","81","9"],
+          solution: "10% of 90 = (10/100) × 90 = 9.",
+          subject: "number"
+        },
+        {
+          difficulty: "year6",
+          level: "easy",
+          type: "multipleChoice",
+          text: "What is 24 ÷ 8?",
+          answer: "3",
+          options: ["32","16","2","3","4"],
+          solution: "24 ÷ 8 = 3.",
+          subject: "number"
+        },
+        {
+          difficulty: "year6",
+          level: "easy",
+          type: "multipleChoice",
+          text: "What is 36 ÷ 9?",
+          answer: "4",
+          options: ["45","3","27","5","4"],
+          solution: "36 ÷ 9 = 4.",
+          subject: "number"
+        },
+        {
+          difficulty: "year6",
+          level: "easy",
+          type: "multipleChoice",
+          text: "What is 45 ÷ 5?",
+          answer: "9",
+          options: ["10","40","9","50","8"],
+          solution: "45 ÷ 5 = 9.",
+          subject: "number"
+        },
+        {
+          difficulty: "year6",
+          level: "medium",
+          type: "shortAnswer",
+          text: "A rectangle has length 9cm and width 5cm. What is its perimeter?",
+          answer: "28",
+          options: null,
+          solution: "Perimeter = 2 × (length + width) = 2 × (9+5) = 28 cm.",
+          subject: "geometry"
+        },
+        {
+          difficulty: "year6",
+          level: "medium",
+          type: "shortAnswer",
+          text: "A rectangle has area 42 cm² and length 7 cm. What is its width?",
+          answer: "6",
+          options: null,
+          solution: "Width = area ÷ length = 42 ÷ 7 = 6 cm.",
+          subject: "geometry"
+        },
+        {
+          difficulty: "year6",
+          level: "medium",
+          type: "shortAnswer",
+          text: "Sarah buys 3 notebooks at £2 each and 2 pens at £1.50 each. How much does she spend in total?",
+          answer: "9",
+          options: null,
+          solution: "3 × £2 = £6. 2 × £1.50 = £3. Total = £6 + £3 = £9.",
+          subject: "number"
+        },
+        {
+          difficulty: "year6",
+          level: "medium",
+          type: "shortAnswer",
+          text: "A ribbon 84 cm long is cut into pieces of 12 cm each. How many pieces are there?",
+          answer: "7",
+          options: null,
+          solution: "84 ÷ 12 = 7 pieces.",
+          subject: "number"
+        },
+        {
+          difficulty: "year6",
+          level: "medium",
+          type: "multipleChoice",
+          text: "A class has 12 boys and 18 girls. What fraction of the class are boys?",
+          answer: "2/5",
+          options: ["3/5","2/5","2/3","1/2","1/3"],
+          solution: "Total students = 12+18 = 30. Fraction of boys = 12/30 = 2/5.",
+          subject: "number"
+        },
+        {
+          difficulty: "year6",
+          level: "medium",
+          type: "shortAnswer",
+          text: "Find the missing number: 4, 8, 16, 32, ?",
+          answer: "64",
+          options: null,
+          solution: "The rule is: double each time. 32 × 2 = 64.",
+          subject: "number"
+        },
+        {
+          difficulty: "year6",
+          level: "medium",
+          type: "shortAnswer",
+          text: "What is the perimeter of a square with area 49 cm²?",
+          answer: "28",
+          options: null,
+          solution: "Side = √49 = 7 cm. Perimeter = 4 × 7 = 28 cm.",
+          subject: "geometry"
+        },
+        {
+          difficulty: "year6",
+          level: "medium",
+          type: "shortAnswer",
+          text: "A recipe needs 250g of flour to make 10 cakes. How much flour is needed for 25 cakes?",
+          answer: "625",
+          options: null,
+          solution: "Flour per cake = 250 ÷ 10 = 25g. For 25 cakes: 25 × 25 = 625g.",
+          subject: "number"
+        },
+        {
+          difficulty: "year6",
+          level: "hard",
+          type: "shortAnswer",
+          text: "The sum of two numbers is 45 and their difference is 9. What is the larger number?",
+          answer: "27",
+          options: null,
+          solution: "Larger = (45+9)/2 = 27.",
+          subject: "algebra"
+        },
+        {
+          difficulty: "year6",
+          level: "hard",
+          type: "shortAnswer",
+          text: "A tank is 2/5 full of water. After adding 30 litres, it becomes 4/5 full. What is the tank's total capacity, in litres?",
+          answer: "75",
+          options: null,
+          solution: "The added water fills 4/5 − 2/5 = 2/5 of the tank, so 2/5 of the tank = 30 litres. The full tank = 30 ÷ 2 × 5 = 75 litres.",
+          subject: "algebra"
+        },
+        {
+          difficulty: "year6",
+          level: "hard",
+          type: "shortAnswer",
+          text: "In a class of 40 students, 60% passed a test on the first try. Of those who failed, half passed on a retake. How many students still had not passed after the retake?",
+          answer: "8",
+          options: null,
+          solution: "60% of 40 = 24 passed initially, leaving 16 who failed. Half of 16 = 8 passed on the retake, leaving 16−8=8 who still hadn't passed.",
+          subject: "number"
+        },
+        {
+          difficulty: "year6",
+          level: "hard",
+          type: "shortAnswer",
+          text: "A rectangular garden is 3 times as long as it is wide. Its perimeter is 64 m. What is the width, in metres?",
+          answer: "8",
+          options: null,
+          solution: "Let width=w, length=3w. Perimeter = 2(w+3w) = 8w = 64, so w = 8 m.",
+          subject: "geometry"
+        },
+        {
+          difficulty: "year6",
+          level: "hard",
+          type: "shortAnswer",
+          text: "Three friends share £120 in the ratio 2:3:5. How much does the friend with the largest share receive?",
+          answer: "60",
+          options: null,
+          solution: "Total parts = 2+3+5=10. Each part = 120÷10=£12. Largest share = 5×£12 = £60.",
+          subject: "number"
+        },
+        {
+          difficulty: "year6",
+          level: "hard",
+          type: "shortAnswer",
+          text: "A number is increased by 20% and then decreased by 20%. If the final result is 96, what was the original number?",
+          answer: "100",
+          options: null,
+          solution: "Increasing by 20% then decreasing by 20% multiplies the original by 1.2×0.8=0.96. So original = 96 ÷ 0.96 = 100.",
+          subject: "number"
+        },
+        {
+          difficulty: "year6",
+          level: "hard",
+          type: "shortAnswer",
+          text: "The average of 5 numbers is 18. If one more number is added, the new average becomes 20. What was the number added?",
+          answer: "30",
+          options: null,
+          solution: "Original total = 5×18=90. New total (6 numbers) = 6×20=120. Added number = 120−90=30.",
+          subject: "number"
+        },
+        {
+          difficulty: "year6",
+          level: "hard",
+          type: "shortAnswer",
+          text: "A shop reduces a £80 jacket by 25% in a sale, then reduces the sale price by a further 10%. What is the final price, in pounds?",
+          answer: "54",
+          options: null,
+          solution: "After 25% off: £80 × 0.75 = £60. After a further 10% off: £60 × 0.9 = £54.",
+          subject: "number"
+        },
+        {
+          difficulty: "year7",
+          level: "easy",
+          type: "shortAnswer",
+          text: "Solve for x: 4x + 7 = 27",
+          answer: "5",
+          options: null,
+          solution: "4x = 27−7 = 20. x = 20÷4 = 5.",
+          subject: "algebra"
+        },
+        {
+          difficulty: "year7",
+          level: "easy",
+          type: "shortAnswer",
+          text: "Solve for x: 3x − 8 = 13",
+          answer: "7",
+          options: null,
+          solution: "3x = 13+8 = 21. x = 21÷3 = 7.",
+          subject: "algebra"
+        },
+        {
+          difficulty: "year7",
+          level: "easy",
+          type: "multipleChoice",
+          text: "What is -7 + 12?",
+          answer: "5",
+          options: ["19","7","-19","-5","5"],
+          solution: "-7 + 12 = 5.",
+          subject: "number"
+        },
+        {
+          difficulty: "year7",
+          level: "easy",
+          type: "multipleChoice",
+          text: "What is -3 × -6?",
+          answer: "18",
+          options: ["-18","-9","9","18","3"],
+          solution: "A negative times a negative gives a positive: -3 × -6 = 18.",
+          subject: "number"
+        },
+        {
+          difficulty: "year7",
+          level: "easy",
+          type: "shortAnswer",
+          text: "What is 30% of 150?",
+          answer: "45",
+          options: null,
+          solution: "30% of 150 = 0.3 × 150 = 45.",
+          subject: "number"
+        },
+        {
+          difficulty: "year7",
+          level: "easy",
+          type: "shortAnswer",
+          text: "Simplify: 5x + 3x − 2x",
+          answer: "6x",
+          options: null,
+          solution: "5x+3x−2x = (5+3−2)x = 6x.",
+          subject: "algebra"
+        },
+        {
+          difficulty: "year7",
+          level: "easy",
+          type: "shortAnswer",
+          text: "What is the value of 3² + 4²?",
+          answer: "25",
+          options: null,
+          solution: "3²=9, 4²=16, so 9+16=25.",
+          subject: "number"
+        },
+        {
+          difficulty: "year7",
+          level: "easy",
+          type: "shortAnswer",
+          text: "A triangle has angles of 55° and 65°. What is the third angle?",
+          answer: "60",
+          options: null,
+          solution: "Angles in a triangle sum to 180°. Third angle = 180−55−65 = 60°.",
+          subject: "geometry"
+        },
+        {
+          difficulty: "year7",
+          level: "medium",
+          type: "shortAnswer",
+          text: "Solve for x: 2(x + 5) = 22",
+          answer: "6",
+          options: null,
+          solution: "2x+10=22, 2x=12, x=6.",
+          subject: "algebra"
+        },
+        {
+          difficulty: "year7",
+          level: "medium",
+          type: "shortAnswer",
+          text: "Expand: 4(2x − 3)",
+          answer: "8x - 12",
+          options: null,
+          solution: "4×2x=8x, 4×(−3)=−12, so 4(2x−3)=8x−12.",
+          subject: "algebra"
+        },
+        {
+          difficulty: "year7",
+          level: "medium",
+          type: "shortAnswer",
+          text: "A right-angled triangle has legs 9cm and 12cm. What is the length of its hypotenuse?",
+          answer: "15",
+          options: null,
+          solution: "Hypotenuse² = 9²+12² = 81+144 = 225. Hypotenuse = √225 = 15 cm.",
+          subject: "geometry"
+        },
+        {
+          difficulty: "year7",
+          level: "medium",
+          type: "shortAnswer",
+          text: "What is the HCF (highest common factor) of 48 and 60?",
+          answer: "12",
+          options: null,
+          solution: "48=2⁴×3, 60=2²×3×5. HCF = 2²×3 = 12.",
+          subject: "number"
+        },
+        {
+          difficulty: "year7",
+          level: "medium",
+          type: "shortAnswer",
+          text: "What is the LCM (lowest common multiple) of 8 and 12?",
+          answer: "24",
+          options: null,
+          solution: "8=2³, 12=2²×3. LCM=2³×3=24.",
+          subject: "number"
+        },
+        {
+          difficulty: "year7",
+          level: "medium",
+          type: "shortAnswer",
+          text: "A car travels 180km in 3 hours. At the same speed, how long does it take to travel 300km?",
+          answer: "5",
+          options: null,
+          solution: "Speed = 180÷3 = 60 km/h. Time for 300km = 300÷60 = 5 hours.",
+          subject: "number"
+        },
+        {
+          difficulty: "year7",
+          level: "medium",
+          type: "multipleChoice",
+          text: "A bag has 4 red, 3 blue and 5 green balls. What is the probability of picking a blue ball at random?",
+          answer: "1/4",
+          options: ["1/4","3/5","1/5","1/3","1/2"],
+          solution: "Total balls = 4+3+5=12. P(blue) = 3/12 = 1/4.",
+          subject: "logic"
+        },
+        {
+          difficulty: "year7",
+          level: "medium",
+          type: "shortAnswer",
+          text: "Simplify: (3x²) × (4x³)",
+          answer: "12x^5",
+          options: null,
+          solution: "3×4=12, and x²×x³=x⁵, so the result is 12x⁵.",
+          subject: "algebra"
+        },
+        {
+          difficulty: "year7",
+          level: "hard",
+          type: "shortAnswer",
+          text: "Solve for x: 5x − 3 = 3x + 11",
+          answer: "7",
+          options: null,
+          solution: "5x−3x=11+3, 2x=14, x=7.",
+          subject: "algebra"
+        },
+        {
+          difficulty: "year7",
+          level: "hard",
+          type: "shortAnswer",
+          text: "Factorise: x² + 7x + 10",
+          answer: "(x + 2)(x + 5)",
+          options: null,
+          solution: "Two numbers that multiply to 10 and add to 7 are 2 and 5, so x²+7x+10=(x+2)(x+5).",
+          subject: "algebra"
+        },
+        {
+          difficulty: "year7",
+          level: "hard",
+          type: "shortAnswer",
+          text: "The angles of a triangle are in the ratio 2:3:4. What is the size of the largest angle?",
+          answer: "80",
+          options: null,
+          solution: "Total parts = 2+3+4=9. Each part=180÷9=20°. Largest angle=4×20=80°.",
+          subject: "geometry"
+        },
+        {
+          difficulty: "year7",
+          level: "hard",
+          type: "shortAnswer",
+          text: "A number x satisfies 3(x-2) = 2(x+5). Find x.",
+          answer: "16",
+          options: null,
+          solution: "3x−6=2x+10, so 3x−2x=10+6, x=16.",
+          subject: "algebra"
+        },
+        {
+          difficulty: "year7",
+          level: "hard",
+          type: "shortAnswer",
+          text: "Find the remainder when 2^20 is divided by 5.",
+          answer: "1",
+          options: null,
+          solution: "Powers of 2 mod 5 cycle as 2,4,3,1 (period 4). 20 is a multiple of 4, so 2^20 mod5 = the 4th term = 1.",
+          subject: "number"
+        },
+        {
+          difficulty: "year7",
+          level: "hard",
+          type: "shortAnswer",
+          text: "Two numbers have HCF 6 and LCM 90. If one number is 18, what is the other?",
+          answer: "30",
+          options: null,
+          solution: "Product of two numbers = HCF × LCM = 6×90=540. Other number = 540÷18=30.",
+          subject: "number"
+        },
+        {
+          difficulty: "year7",
+          level: "hard",
+          type: "shortAnswer",
+          text: "A shape's perimeter is 60cm. Its length is twice its width plus 3cm. Find the width, in cm.",
+          answer: "9",
+          options: null,
+          solution: "Let width=w, length=2w+3. Perimeter=2(w+2w+3)=2(3w+3)=6w+6=60, so 6w=54, w=9.",
+          subject: "algebra"
+        },
+        {
+          difficulty: "year7",
+          level: "hard",
+          type: "shortAnswer",
+          text: "The mean of 4 numbers is 15. Three of the numbers are 10, 14 and 18. What is the fourth number?",
+          answer: "18",
+          options: null,
+          solution: "Total = 4×15=60. Sum of known three = 10+14+18=42. Fourth number = 60−42=18.",
+          subject: "number"
+        },
+        {
+          difficulty: "year8",
+          level: "easy",
+          type: "shortAnswer",
+          text: "Solve for x: 6x - 9 = 21",
+          answer: "5",
+          options: null,
+          solution: "6x=30, x=5.",
+          subject: "algebra"
+        },
+        {
+          difficulty: "year8",
+          level: "easy",
+          type: "shortAnswer",
+          text: "Expand: 5(3x + 2)",
+          answer: "15x + 10",
+          options: null,
+          solution: "5×3x=15x, 5×2=10.",
+          subject: "algebra"
+        },
+        {
+          difficulty: "year8",
+          level: "easy",
+          type: "shortAnswer",
+          text: "What is 4³?",
+          answer: "64",
+          options: null,
+          solution: "4³=4×4×4=64.",
+          subject: "number"
+        },
+        {
+          difficulty: "year8",
+          level: "easy",
+          type: "shortAnswer",
+          text: "Simplify: 7y - 2y + 5y",
+          answer: "10y",
+          options: null,
+          solution: "7y−2y+5y=(7−2+5)y=10y.",
+          subject: "algebra"
+        },
+        {
+          difficulty: "year8",
+          level: "easy",
+          type: "shortAnswer",
+          text: "What is the area of a triangle with base 10cm and height 6cm?",
+          answer: "30",
+          options: null,
+          solution: "Area = ½ × base × height = ½×10×6=30 cm².",
+          subject: "geometry"
+        },
+        {
+          difficulty: "year8",
+          level: "easy",
+          type: "shortAnswer",
+          text: "What is 60% of 90?",
+          answer: "54",
+          options: null,
+          solution: "60% of 90 = 0.6×90=54.",
+          subject: "number"
+        },
+        {
+          difficulty: "year8",
+          level: "easy",
+          type: "shortAnswer",
+          text: "Find the median of: 3, 7, 9, 12, 15",
+          answer: "9",
+          options: null,
+          solution: "Sorted, the middle value of 5 numbers is the 3rd one: 9.",
+          subject: "number"
+        },
+        {
+          difficulty: "year8",
+          level: "easy",
+          type: "multipleChoice",
+          text: "What is 5⁻¹ as a fraction?",
+          answer: "1/5",
+          options: ["1/5","5","0","-1/5","-5"],
+          solution: "A negative exponent gives the reciprocal: 5⁻¹ = 1/5.",
+          subject: "number"
+        },
+        {
+          difficulty: "year8",
+          level: "medium",
+          type: "shortAnswer",
+          text: "Solve: 3(x - 4) = 2(x + 1)",
+          answer: "14",
+          options: null,
+          solution: "3x−12=2x+2, x=14.",
+          subject: "algebra"
+        },
+        {
+          difficulty: "year8",
+          level: "medium",
+          type: "shortAnswer",
+          text: "Factorise: x² - 9",
+          answer: "(x - 3)(x + 3)",
+          options: null,
+          solution: "This is a difference of two squares: x²−9=x²−3²=(x−3)(x+3).",
+          subject: "algebra"
+        },
+        {
+          difficulty: "year8",
+          level: "medium",
+          type: "shortAnswer",
+          text: "A right-angled triangle has hypotenuse 25cm and one leg 7cm. What is the length of the other leg, in cm?",
+          answer: "24",
+          options: null,
+          solution: "Other leg² = 25²−7²=625−49=576. √576=24.",
+          subject: "geometry"
+        },
+        {
+          difficulty: "year8",
+          level: "medium",
+          type: "shortAnswer",
+          text: "The mean of 6 numbers is 12. Find the sum of the 6 numbers.",
+          answer: "72",
+          options: null,
+          solution: "Sum = mean × count = 12×6=72.",
+          subject: "number"
+        },
+        {
+          difficulty: "year8",
+          level: "medium",
+          type: "shortAnswer",
+          text: "Simplify: (2x³) × (5x²)",
+          answer: "10x^5",
+          options: null,
+          solution: "2×5=10, x³×x²=x⁵.",
+          subject: "algebra"
+        },
+        {
+          difficulty: "year8",
+          level: "medium",
+          type: "shortAnswer",
+          text: "A cylinder has radius 4cm and height 10cm. Find its volume in terms of π.",
+          answer: "160π",
+          options: null,
+          solution: "Volume = πr²h = π×16×10=160π cm³.",
+          subject: "geometry"
+        },
+        {
+          difficulty: "year8",
+          level: "medium",
+          type: "shortAnswer",
+          text: "What is the interior angle of a regular decagon (10 sides)?",
+          answer: "144",
+          options: null,
+          solution: "Interior angle sum = (10−2)×180=1440°. Each angle = 1440÷10=144°.",
+          subject: "geometry"
+        },
+        {
+          difficulty: "year8",
+          level: "medium",
+          type: "shortAnswer",
+          text: "Solve the simultaneous equations: x+y=10 and x−y=4. Find x.",
+          answer: "7",
+          options: null,
+          solution: "Adding the equations: 2x=14, so x=7.",
+          subject: "algebra"
+        },
+        {
+          difficulty: "year8",
+          level: "hard",
+          type: "shortAnswer",
+          text: "Solve: x² − 5x + 6 = 0. Give the larger solution.",
+          answer: "3",
+          options: null,
+          solution: "Factorising: (x−2)(x−3)=0, so x=2 or x=3. The larger solution is 3.",
+          subject: "algebra"
+        },
+        {
+          difficulty: "year8",
+          level: "hard",
+          type: "shortAnswer",
+          text: "Expand and simplify: (x + 3)(x - 5)",
+          answer: "x^2 - 2x - 15",
+          options: null,
+          solution: "(x+3)(x−5) = x²−5x+3x−15 = x²−2x−15.",
+          subject: "algebra"
+        },
+        {
+          difficulty: "year8",
+          level: "hard",
+          type: "shortAnswer",
+          text: "A ladder 17m long leans against a wall with its foot 8m from the wall. How high up the wall does it reach, in metres?",
+          answer: "15",
+          options: null,
+          solution: "Height² = 17²−8²=289−64=225. √225=15.",
+          subject: "geometry"
+        },
+        {
+          difficulty: "year8",
+          level: "hard",
+          type: "shortAnswer",
+          text: "Solve for x: (x/3) + (x/4) = 7",
+          answer: "12",
+          options: null,
+          solution: "Multiply through by 12: 4x+3x=84, so 7x=84, x=12.",
+          subject: "algebra"
+        },
+        {
+          difficulty: "year8",
+          level: "hard",
+          type: "shortAnswer",
+          text: "Find the number of trailing zeros in 50!.",
+          answer: "12",
+          options: null,
+          solution: "Trailing zeros = ⌊50/5⌋+⌊50/25⌋ = 10+2 = 12.",
+          subject: "number"
+        },
+        {
+          difficulty: "year8",
+          level: "hard",
+          type: "shortAnswer",
+          text: "A car depreciates by 15% each year. If it costs £20,000 new, what is its value after 2 years, to the nearest pound?",
+          answer: "14450",
+          options: null,
+          solution: "After year 1: £20,000×0.85=£17,000. After year 2: £17,000×0.85=£14,450.",
+          subject: "number"
+        },
+        {
+          difficulty: "year8",
+          level: "hard",
+          type: "shortAnswer",
+          text: "The perimeter of a rectangle is 50cm and its area is 150cm². What is the length of the longer side, in cm?",
+          answer: "15",
+          options: null,
+          solution: "Let length=l, width=w. 2(l+w)=50 so l+w=25. lw=150. Solving: l and w are roots of t²−25t+150=0, giving t=10 or t=15. The longer side is 15cm.",
+          subject: "geometry"
+        },
+        {
+          difficulty: "year8",
+          level: "hard",
+          type: "shortAnswer",
+          text: "Two similar triangles have corresponding sides in ratio 2:5. If the area of the smaller triangle is 12cm², what is the area of the larger triangle?",
+          answer: "75",
+          options: null,
+          solution: "Area ratio = (side ratio)² = (2:5)² = 4:25. Larger area = 12 × (25/4) = 75 cm².",
+          subject: "geometry"
+        }
+      ];
+
+      for (const q of yearTierQuestions) {
+        await pool.query(
+          `INSERT INTO questions (difficulty, type, text, answer, options, solution, source, subject, level)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [q.difficulty, q.type, q.text, q.answer, q.options ? JSON.stringify(q.options) : null, q.solution, 'Year Tier Practice Bank', q.subject, q.level]
+        );
+      }
+      console.log('Seeded 72 tiered Year 6/7/8 practice questions');
+    }
+
     console.log('Database tables initialized');
   } catch (err) {
     console.error('Error initializing database:', err);
@@ -2064,7 +3201,19 @@ app.post('/api/auth/login', async (req, res) => {
 // Questions endpoints
 app.get('/api/questions/:difficulty', async (req, res) => {
   const { difficulty } = req.params;
+  const { level } = req.query;
   try {
+    if (level) {
+      const tiered = await pool.query(
+        'SELECT * FROM questions WHERE difficulty = $1 AND level = $2 ORDER BY RANDOM() LIMIT 1',
+        [difficulty, level]
+      );
+      if (tiered.rows[0]) {
+        return res.json(tiered.rows[0]);
+      }
+      // No questions tagged with this tier yet — fall back to any question
+      // at this difficulty rather than dead-ending the child's session.
+    }
     const result = await pool.query(
       'SELECT * FROM questions WHERE difficulty = $1 ORDER BY RANDOM() LIMIT 1',
       [difficulty]
@@ -2077,15 +3226,22 @@ app.get('/api/questions/:difficulty', async (req, res) => {
 
 // Progress endpoints
 // outcome: 'correct' | 'incorrect' | 'skipped'. Coin amounts come from the
-// configurable coin_settings row so parents can tune the economy.
+// configurable coin_settings row so parents can tune the economy. Correct
+// answers are rewarded according to the question's difficulty tier
+// (question_level: 'easy' | 'medium' | 'hard'), defaulting to the medium
+// rate for untagged (legacy) questions.
 app.post('/api/progress/update', async (req, res) => {
-  const { user_id, outcome, difficulty, question_text } = req.body;
+  const { user_id, outcome, difficulty, question_text, question_level } = req.body;
   try {
     const settingsResult = await pool.query('SELECT * FROM coin_settings WHERE id = 1');
     const settings = settingsResult.rows[0];
 
+    const correctReward =
+      question_level === 'easy' ? settings.easy_coins :
+      question_level === 'hard' ? settings.hard_coins :
+      settings.medium_coins;
     const nominalDelta =
-      outcome === 'correct' ? settings.correct_coins :
+      outcome === 'correct' ? correctReward :
       outcome === 'incorrect' ? -settings.wrong_coins :
       outcome === 'skipped' ? -settings.skip_coins : 0;
     const correctIncrement = outcome === 'correct' ? 1 : 0;
@@ -2145,17 +3301,19 @@ app.put('/api/settings/coins', async (req, res) => {
     const n = parseInt(v, 10);
     return Number.isFinite(n) && n >= 0 ? n : fallback;
   };
-  const correct_coins = toNonNegativeInt(req.body.correct_coins, 10);
+  const easy_coins = toNonNegativeInt(req.body.easy_coins, 4);
+  const medium_coins = toNonNegativeInt(req.body.medium_coins, 6);
+  const hard_coins = toNonNegativeInt(req.body.hard_coins, 10);
   const wrong_coins = toNonNegativeInt(req.body.wrong_coins, 5);
   const skip_coins = toNonNegativeInt(req.body.skip_coins, 2);
   const coins_per_penny = Math.max(1, toNonNegativeInt(req.body.coins_per_penny, 10));
   try {
     const result = await pool.query(
       `UPDATE coin_settings
-       SET correct_coins = $1, wrong_coins = $2, skip_coins = $3, coins_per_penny = $4, updated_at = NOW()
+       SET easy_coins = $1, medium_coins = $2, hard_coins = $3, wrong_coins = $4, skip_coins = $5, coins_per_penny = $6, updated_at = NOW()
        WHERE id = 1
        RETURNING *`,
-      [correct_coins, wrong_coins, skip_coins, coins_per_penny]
+      [easy_coins, medium_coins, hard_coins, wrong_coins, skip_coins, coins_per_penny]
     );
     res.json(result.rows[0]);
   } catch (err) {

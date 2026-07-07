@@ -1286,6 +1286,724 @@ async function initializeDB() {
       console.log('Seeded 25 Junior Kangaroo 2025 questions');
     }
 
+    // Seed an additional Kangaroo practice bank of 100 questions (idempotent)
+    const kangarooExtraCheck = await pool.query(
+      "SELECT COUNT(*) FROM questions WHERE source = 'Kangaroo Practice Bank'"
+    );
+    if (parseInt(kangarooExtraCheck.rows[0].count) === 0) {
+      const kangarooExtraQuestions = [
+        {
+          text: "What is 10% of 90?",
+          options: ["18","0","81","19","9"],
+          answer: "9",
+          solution: "10% of 90 = (10/100) × 90 = 9.",
+          subject: "number"
+        },
+        {
+          text: "What is 20% of 65?",
+          options: ["52","19","13","7","26"],
+          answer: "13",
+          solution: "20% of 65 = (20/100) × 65 = 13.",
+          subject: "number"
+        },
+        {
+          text: "What is 25% of 84?",
+          options: ["29","13","42","21","63"],
+          answer: "21",
+          solution: "25% of 84 = (25/100) × 84 = 21.",
+          subject: "number"
+        },
+        {
+          text: "What is 30% of 120?",
+          options: ["48","24","72","84","36"],
+          answer: "36",
+          solution: "30% of 120 = (30/100) × 120 = 36.",
+          subject: "number"
+        },
+        {
+          text: "What is 40% of 55?",
+          options: ["33","44","27","22","17"],
+          answer: "22",
+          solution: "40% of 55 = (40/100) × 55 = 22.",
+          subject: "number"
+        },
+        {
+          text: "What is 5% of 220?",
+          options: ["33","0","11","209","22"],
+          answer: "11",
+          solution: "5% of 220 = (5/100) × 220 = 11.",
+          subject: "number"
+        },
+        {
+          text: "What is 15% of 180?",
+          options: ["9","45","27","153","54"],
+          answer: "27",
+          solution: "15% of 180 = (15/100) × 180 = 27.",
+          subject: "number"
+        },
+        {
+          text: "What is 60% of 45?",
+          options: ["31","27","18","23","54"],
+          answer: "27",
+          solution: "60% of 45 = (60/100) × 45 = 27.",
+          subject: "number"
+        },
+        {
+          text: "What is 75% of 96?",
+          options: ["63","144","72","81","24"],
+          answer: "72",
+          solution: "75% of 96 = (75/100) × 96 = 72.",
+          subject: "number"
+        },
+        {
+          text: "What is 35% of 60?",
+          options: ["15","27","42","21","39"],
+          answer: "21",
+          solution: "35% of 60 = (35/100) × 60 = 21.",
+          subject: "number"
+        },
+        {
+          text: "What is 12% of 150?",
+          options: ["132","33","18","3","36"],
+          answer: "18",
+          solution: "12% of 150 = (12/100) × 150 = 18.",
+          subject: "number"
+        },
+        {
+          text: "What is 80% of 25?",
+          options: ["18","5","40","20","22"],
+          answer: "20",
+          solution: "80% of 25 = (80/100) × 25 = 20.",
+          subject: "number"
+        },
+        {
+          text: "What is 45% of 40?",
+          options: ["18","36","22","63","14"],
+          answer: "18",
+          solution: "45% of 40 = (45/100) × 40 = 18.",
+          subject: "number"
+        },
+        {
+          text: "What is 90% of 30?",
+          options: ["3","27","54","24","30"],
+          answer: "27",
+          solution: "90% of 30 = (90/100) × 30 = 27.",
+          subject: "number"
+        },
+        {
+          text: "What is 24% of 50?",
+          options: ["17","7","38","24","12"],
+          answer: "12",
+          solution: "24% of 50 = (24/100) × 50 = 12.",
+          subject: "number"
+        },
+        {
+          text: "Find the next number in the sequence: 2, 5, 8, 11, ?",
+          options: ["13","17","15","14","16"],
+          answer: "14",
+          solution: "The rule is: add 3 each time. So the next number is 14.",
+          subject: "number"
+        },
+        {
+          text: "Find the next number in the sequence: 3, 6, 12, 24, ?",
+          options: ["47","49","48","50","51"],
+          answer: "48",
+          solution: "The rule is: double each time. So the next number is 48.",
+          subject: "number"
+        },
+        {
+          text: "Find the next number in the sequence: 1, 4, 9, 16, ?",
+          options: ["25","27","28","24","26"],
+          answer: "25",
+          solution: "The rule is: square numbers: 1², 2², 3², 4², 5². So the next number is 25.",
+          subject: "number"
+        },
+        {
+          text: "Find the next number in the sequence: 1, 1, 2, 3, 5, ?",
+          options: ["11","7","10","9","8"],
+          answer: "8",
+          solution: "The rule is: Fibonacci: each term is the sum of the previous two. So the next number is 8.",
+          subject: "number"
+        },
+        {
+          text: "Find the next number in the sequence: 100, 90, 80, 70, ?",
+          options: ["60","61","63","62","59"],
+          answer: "60",
+          solution: "The rule is: subtract 10 each time. So the next number is 60.",
+          subject: "number"
+        },
+        {
+          text: "Find the next number in the sequence: 2, 4, 8, 16, ?",
+          options: ["32","35","34","33","31"],
+          answer: "32",
+          solution: "The rule is: double each time. So the next number is 32.",
+          subject: "number"
+        },
+        {
+          text: "Find the next number in the sequence: 1, 3, 6, 10, ?",
+          options: ["17","18","14","16","15"],
+          answer: "15",
+          solution: "The rule is: triangular numbers: add one more each time (+2,+3,+4,+5). So the next number is 15.",
+          subject: "number"
+        },
+        {
+          text: "Find the next number in the sequence: 5, 10, 20, 40, ?",
+          options: ["81","79","80","82","83"],
+          answer: "80",
+          solution: "The rule is: double each time. So the next number is 80.",
+          subject: "number"
+        },
+        {
+          text: "Find the next number in the sequence: 1, 8, 27, 64, ?",
+          options: ["126","128","125","124","127"],
+          answer: "125",
+          solution: "The rule is: cube numbers: 1³, 2³, 3³, 4³, 5³. So the next number is 125.",
+          subject: "number"
+        },
+        {
+          text: "Find the next number in the sequence: 50, 44, 38, 32, ?",
+          options: ["27","25","26","29","28"],
+          answer: "26",
+          solution: "The rule is: subtract 6 each time. So the next number is 26.",
+          subject: "number"
+        },
+        {
+          text: "A rectangle has length 7 cm and width 4 cm. What is its area?",
+          options: ["28 cm²","21 cm²","11 cm²","22 cm²","32 cm²"],
+          answer: "28 cm²",
+          solution: "Area = length × width = 7 × 4 = 28 cm².",
+          subject: "geometry"
+        },
+        {
+          text: "A rectangle has length 9 cm and width 5 cm. What is its area?",
+          options: ["45 cm²","50 cm²","28 cm²","36 cm²","14 cm²"],
+          answer: "45 cm²",
+          solution: "Area = length × width = 9 × 5 = 45 cm².",
+          subject: "geometry"
+        },
+        {
+          text: "A rectangle has length 12 cm and width 3 cm. What is its area?",
+          options: ["39 cm²","30 cm²","36 cm²","24 cm²","15 cm²"],
+          answer: "36 cm²",
+          solution: "Area = length × width = 12 × 3 = 36 cm².",
+          subject: "geometry"
+        },
+        {
+          text: "A rectangle has length 8 cm and width 6 cm. What is its area?",
+          options: ["40 cm²","28 cm²","54 cm²","14 cm²","48 cm²"],
+          answer: "48 cm²",
+          solution: "Area = length × width = 8 × 6 = 48 cm².",
+          subject: "geometry"
+        },
+        {
+          text: "A rectangle has length 11 cm and width 4 cm. What is its area?",
+          options: ["15 cm²","44 cm²","33 cm²","30 cm²","48 cm²"],
+          answer: "44 cm²",
+          solution: "Area = length × width = 11 × 4 = 44 cm².",
+          subject: "geometry"
+        },
+        {
+          text: "A rectangle has length 15 cm and width 2 cm. What is its area?",
+          options: ["30 cm²","32 cm²","17 cm²","15 cm²","34 cm²"],
+          answer: "30 cm²",
+          solution: "Area = length × width = 15 × 2 = 30 cm².",
+          subject: "geometry"
+        },
+        {
+          text: "A rectangle has length 10 cm and width 3 cm. What is its perimeter?",
+          options: ["28 cm","26 cm","30 cm","13 cm","22 cm"],
+          answer: "26 cm",
+          solution: "Perimeter = 2 × (length + width) = 2 × (10 + 3) = 26 cm.",
+          subject: "geometry"
+        },
+        {
+          text: "A rectangle has length 14 cm and width 6 cm. What is its perimeter?",
+          options: ["36 cm","42 cm","20 cm","84 cm","40 cm"],
+          answer: "40 cm",
+          solution: "Perimeter = 2 × (length + width) = 2 × (14 + 6) = 40 cm.",
+          subject: "geometry"
+        },
+        {
+          text: "A rectangle has length 9 cm and width 9 cm. What is its perimeter?",
+          options: ["18 cm","38 cm","32 cm","81 cm","36 cm"],
+          answer: "36 cm",
+          solution: "Perimeter = 2 × (length + width) = 2 × (9 + 9) = 36 cm.",
+          subject: "geometry"
+        },
+        {
+          text: "A rectangle has length 20 cm and width 5 cm. What is its perimeter?",
+          options: ["52 cm","46 cm","25 cm","50 cm","100 cm"],
+          answer: "50 cm",
+          solution: "Perimeter = 2 × (length + width) = 2 × (20 + 5) = 50 cm.",
+          subject: "geometry"
+        },
+        {
+          text: "Two angles of a triangle are 50° and 60°. What is the third angle?",
+          options: ["60°","70°","50°","80°","90°"],
+          answer: "70°",
+          solution: "Angles in a triangle sum to 180°. Third angle = 180° − 50° − 60° = 70°.",
+          subject: "geometry"
+        },
+        {
+          text: "Two angles of a triangle are 35° and 95°. What is the third angle?",
+          options: ["95°","60°","50°","40°","35°"],
+          answer: "50°",
+          solution: "Angles in a triangle sum to 180°. Third angle = 180° − 35° − 95° = 50°.",
+          subject: "geometry"
+        },
+        {
+          text: "Two angles of a triangle are 72° and 48°. What is the third angle?",
+          options: ["50°","70°","48°","60°","72°"],
+          answer: "60°",
+          solution: "Angles in a triangle sum to 180°. Third angle = 180° − 72° − 48° = 60°.",
+          subject: "geometry"
+        },
+        {
+          text: "Two angles of a triangle are 100° and 45°. What is the third angle?",
+          options: ["100°","25°","55°","35°","45°"],
+          answer: "35°",
+          solution: "Angles in a triangle sum to 180°. Third angle = 180° − 100° − 45° = 35°.",
+          subject: "geometry"
+        },
+        {
+          text: "Two angles of a triangle are 63° and 63°. What is the third angle?",
+          options: ["63°","74°","54°","64°","44°"],
+          answer: "54°",
+          solution: "Angles in a triangle sum to 180°. Third angle = 180° − 63° − 63° = 54°.",
+          subject: "geometry"
+        },
+        {
+          text: "A right-angled triangle has legs of length 3 cm and 4 cm. What is the length of the hypotenuse?",
+          options: ["12 cm","3 cm","7 cm","5 cm","10 cm"],
+          answer: "5 cm",
+          solution: "By Pythagoras' theorem: hypotenuse² = 3² + 4² = 9 + 16 = 25. Hypotenuse = √25 = 5 cm.",
+          subject: "geometry"
+        },
+        {
+          text: "A right-angled triangle has legs of length 6 cm and 8 cm. What is the length of the hypotenuse?",
+          options: ["48 cm","12 cm","14 cm","8 cm","10 cm"],
+          answer: "10 cm",
+          solution: "By Pythagoras' theorem: hypotenuse² = 6² + 8² = 36 + 64 = 100. Hypotenuse = √100 = 10 cm.",
+          subject: "geometry"
+        },
+        {
+          text: "A right-angled triangle has legs of length 5 cm and 12 cm. What is the length of the hypotenuse?",
+          options: ["13 cm","11 cm","60 cm","17 cm","15 cm"],
+          answer: "13 cm",
+          solution: "By Pythagoras' theorem: hypotenuse² = 5² + 12² = 25 + 144 = 169. Hypotenuse = √169 = 13 cm.",
+          subject: "geometry"
+        },
+        {
+          text: "A right-angled triangle has legs of length 9 cm and 12 cm. What is the length of the hypotenuse?",
+          options: ["15 cm","108 cm","13 cm","21 cm","17 cm"],
+          answer: "15 cm",
+          solution: "By Pythagoras' theorem: hypotenuse² = 9² + 12² = 81 + 144 = 225. Hypotenuse = √225 = 15 cm.",
+          subject: "geometry"
+        },
+        {
+          text: "A right-angled triangle has legs of length 8 cm and 15 cm. What is the length of the hypotenuse?",
+          options: ["17 cm","23 cm","120 cm","19 cm","15 cm"],
+          answer: "17 cm",
+          solution: "By Pythagoras' theorem: hypotenuse² = 8² + 15² = 64 + 225 = 289. Hypotenuse = √289 = 17 cm.",
+          subject: "geometry"
+        },
+        {
+          text: "A square has side length 4 cm. What is its area?",
+          options: ["23 cm²","12 cm²","25 cm²","20 cm²","16 cm²"],
+          answer: "16 cm²",
+          solution: "Area of a square = side × side = 4 × 4 = 16 cm².",
+          subject: "geometry"
+        },
+        {
+          text: "A square has side length 6 cm. What is its area?",
+          options: ["24 cm²","18 cm²","30 cm²","36 cm²","42 cm²"],
+          answer: "36 cm²",
+          solution: "Area of a square = side × side = 6 × 6 = 36 cm².",
+          subject: "geometry"
+        },
+        {
+          text: "A square has side length 7 cm. What is its area?",
+          options: ["28 cm²","42 cm²","49 cm²","56 cm²","21 cm²"],
+          answer: "49 cm²",
+          solution: "Area of a square = side × side = 7 × 7 = 49 cm².",
+          subject: "geometry"
+        },
+        {
+          text: "A square has side length 9 cm. What is its area?",
+          options: ["27 cm²","90 cm²","36 cm²","72 cm²","81 cm²"],
+          answer: "81 cm²",
+          solution: "Area of a square = side × side = 9 × 9 = 81 cm².",
+          subject: "geometry"
+        },
+        {
+          text: "A square has side length 12 cm. What is its area?",
+          options: ["48 cm²","156 cm²","36 cm²","144 cm²","132 cm²"],
+          answer: "144 cm²",
+          solution: "Area of a square = side × side = 12 × 12 = 144 cm².",
+          subject: "geometry"
+        },
+        {
+          text: "How many factors does 24 have?",
+          options: ["9","7","8","6","10"],
+          answer: "8",
+          solution: "Listing all whole numbers that divide 24 exactly shows there are 8 factors.",
+          subject: "number"
+        },
+        {
+          text: "How many factors does 36 have?",
+          options: ["10","8","9","11","7"],
+          answer: "9",
+          solution: "Listing all whole numbers that divide 36 exactly shows there are 9 factors.",
+          subject: "number"
+        },
+        {
+          text: "How many factors does 60 have?",
+          options: ["14","11","12","10","13"],
+          answer: "12",
+          solution: "Listing all whole numbers that divide 60 exactly shows there are 12 factors.",
+          subject: "number"
+        },
+        {
+          text: "How many factors does 100 have?",
+          options: ["9","7","8","10","11"],
+          answer: "9",
+          solution: "Listing all whole numbers that divide 100 exactly shows there are 9 factors.",
+          subject: "number"
+        },
+        {
+          text: "How many factors does 45 have?",
+          options: ["8","7","4","6","5"],
+          answer: "6",
+          solution: "Listing all whole numbers that divide 45 exactly shows there are 6 factors.",
+          subject: "number"
+        },
+        {
+          text: "What is the highest common factor (HCF) of 24 and 36?",
+          options: ["17","24","11","13","12"],
+          answer: "12",
+          solution: "The largest whole number dividing both 24 and 36 exactly is 12.",
+          subject: "number"
+        },
+        {
+          text: "What is the highest common factor (HCF) of 18 and 48?",
+          options: ["7","5","11","12","6"],
+          answer: "6",
+          solution: "The largest whole number dividing both 18 and 48 exactly is 6.",
+          subject: "number"
+        },
+        {
+          text: "What is the highest common factor (HCF) of 45 and 60?",
+          options: ["30","16","15","14","20"],
+          answer: "15",
+          solution: "The largest whole number dividing both 45 and 60 exactly is 15.",
+          subject: "number"
+        },
+        {
+          text: "What is the highest common factor (HCF) of 28 and 42?",
+          options: ["15","14","19","13","28"],
+          answer: "14",
+          solution: "The largest whole number dividing both 28 and 42 exactly is 14.",
+          subject: "number"
+        },
+        {
+          text: "What is the highest common factor (HCF) of 16 and 40?",
+          options: ["16","13","9","7","8"],
+          answer: "8",
+          solution: "The largest whole number dividing both 16 and 40 exactly is 8.",
+          subject: "number"
+        },
+        {
+          text: "What is the lowest common multiple (LCM) of 4 and 6?",
+          options: ["24","16","6","25","12"],
+          answer: "12",
+          solution: "The smallest number that both 4 and 6 divide into exactly is 12.",
+          subject: "number"
+        },
+        {
+          text: "What is the lowest common multiple (LCM) of 6 and 8?",
+          options: ["24","16","8","30","48"],
+          answer: "24",
+          solution: "The smallest number that both 6 and 8 divide into exactly is 24.",
+          subject: "number"
+        },
+        {
+          text: "What is the lowest common multiple (LCM) of 9 and 12?",
+          options: ["45","12","36","108","24"],
+          answer: "36",
+          solution: "The smallest number that both 9 and 12 divide into exactly is 36.",
+          subject: "number"
+        },
+        {
+          text: "What is the lowest common multiple (LCM) of 5 and 15?",
+          options: ["31","20","75","15","30"],
+          answer: "15",
+          solution: "The smallest number that both 5 and 15 divide into exactly is 15.",
+          subject: "number"
+        },
+        {
+          text: "What is the lowest common multiple (LCM) of 8 and 10?",
+          options: ["40","30","80","48","10"],
+          answer: "40",
+          solution: "The smallest number that both 8 and 10 divide into exactly is 40.",
+          subject: "number"
+        },
+        {
+          text: "A car travels at 60 km/h for 2 hours. How far does it travel?",
+          options: ["62 km","120 km","60 km","155 km","180 km"],
+          answer: "120 km",
+          solution: "Distance = speed × time = 60 × 2 = 120 km.",
+          subject: "number"
+        },
+        {
+          text: "A car travels at 40 km/h for 3 hours. How far does it travel?",
+          options: ["43 km","160 km","80 km","155 km","120 km"],
+          answer: "120 km",
+          solution: "Distance = speed × time = 40 × 3 = 120 km.",
+          subject: "number"
+        },
+        {
+          text: "A car travels at 80 km/h for 1.5 hours. How far does it travel?",
+          options: ["40 km","200 km","81 km","160 km","120 km"],
+          answer: "120 km",
+          solution: "Distance = speed × time = 80 × 1.5 = 120 km.",
+          subject: "number"
+        },
+        {
+          text: "A car travels at 50 km/h for 4 hours. How far does it travel?",
+          options: ["100 km","150 km","200 km","250 km","54 km"],
+          answer: "200 km",
+          solution: "Distance = speed × time = 50 × 4 = 200 km.",
+          subject: "number"
+        },
+        {
+          text: "A car travels at 30 km/h for 5 hours. How far does it travel?",
+          options: ["60 km","180 km","35 km","150 km","120 km"],
+          answer: "150 km",
+          solution: "Distance = speed × time = 30 × 5 = 150 km.",
+          subject: "number"
+        },
+        {
+          text: "A car travels at 90 km/h for 2 hours. How far does it travel?",
+          options: ["215 km","92 km","180 km","270 km","90 km"],
+          answer: "180 km",
+          solution: "Distance = speed × time = 90 × 2 = 180 km.",
+          subject: "number"
+        },
+        {
+          text: "A car travels at 45 km/h for 4 hours. How far does it travel?",
+          options: ["49 km","225 km","90 km","180 km","135 km"],
+          answer: "180 km",
+          solution: "Distance = speed × time = 45 × 4 = 180 km.",
+          subject: "number"
+        },
+        {
+          text: "4 identical pens cost £20 in total. How much do 7 pens cost?",
+          options: ["£30","£35","£40","£42","£20"],
+          answer: "£35",
+          solution: "Each pen costs £20 ÷ 4 = £5. So 7 pens cost 7 × £5 = £35.",
+          subject: "number"
+        },
+        {
+          text: "3 identical pens cost £15 in total. How much do 5 pens cost?",
+          options: ["£25","£36","£15","£20","£30"],
+          answer: "£25",
+          solution: "Each pen costs £15 ÷ 3 = £5. So 5 pens cost 5 × £5 = £25.",
+          subject: "number"
+        },
+        {
+          text: "6 identical pens cost £24 in total. How much do 10 pens cost?",
+          options: ["£40","£44","£36","£50","£24"],
+          answer: "£40",
+          solution: "Each pen costs £24 ÷ 6 = £4. So 10 pens cost 10 × £4 = £40.",
+          subject: "number"
+        },
+        {
+          text: "5 identical pens cost £35 in total. How much do 8 pens cost?",
+          options: ["£49","£35","£64","£63","£56"],
+          answer: "£56",
+          solution: "Each pen costs £35 ÷ 5 = £7. So 8 pens cost 8 × £7 = £56.",
+          subject: "number"
+        },
+        {
+          text: "2 identical pens cost £10 in total. How much do 6 pens cost?",
+          options: ["£36","£35","£10","£25","£30"],
+          answer: "£30",
+          solution: "Each pen costs £10 ÷ 2 = £5. So 6 pens cost 6 × £5 = £30.",
+          subject: "number"
+        },
+        {
+          text: "8 identical pens cost £32 in total. How much do 3 pens cost?",
+          options: ["£15","£32","£12","£8","£16"],
+          answer: "£12",
+          solution: "Each pen costs £32 ÷ 8 = £4. So 3 pens cost 3 × £4 = £12.",
+          subject: "number"
+        },
+        {
+          text: "10 identical pens cost £20 in total. How much do 4 pens cost?",
+          options: ["£12","£10","£8","£6","£20"],
+          answer: "£8",
+          solution: "Each pen costs £20 ÷ 10 = £2. So 4 pens cost 4 × £2 = £8.",
+          subject: "number"
+        },
+        {
+          text: "Maya is 8 years old now. How old will she be in 5 years?",
+          options: ["8","13","5","3","15"],
+          answer: "13",
+          solution: "8 + 5 = 13.",
+          subject: "algebra"
+        },
+        {
+          text: "Maya is 12 years old now. How old will she be in 7 years?",
+          options: ["5","19","21","12","7"],
+          answer: "19",
+          solution: "12 + 7 = 19.",
+          subject: "algebra"
+        },
+        {
+          text: "Maya is 15 years old now. How old will she be in 10 years?",
+          options: ["15","5","25","27","10"],
+          answer: "25",
+          solution: "15 + 10 = 25.",
+          subject: "algebra"
+        },
+        {
+          text: "Maya is 6 years old now. How old will she be in 9 years?",
+          options: ["15","17","9","8","6"],
+          answer: "15",
+          solution: "6 + 9 = 15.",
+          subject: "algebra"
+        },
+        {
+          text: "Maya is 20 years old now. How old will she be in 4 years?",
+          options: ["24","4","26","16","20"],
+          answer: "24",
+          solution: "20 + 4 = 24.",
+          subject: "algebra"
+        },
+        {
+          text: "Maya is 9 years old now. How old will she be in 11 years?",
+          options: ["20","26","22","11","9"],
+          answer: "20",
+          solution: "9 + 11 = 20.",
+          subject: "algebra"
+        },
+        {
+          text: "In how many different ways can 3 different books be arranged in a row on a shelf?",
+          options: ["15","9","12","6","3"],
+          answer: "6",
+          solution: "3 different books can be arranged in 3! = 3 × 2 × 1 = 6 ways.",
+          subject: "logic"
+        },
+        {
+          text: "In how many different ways can 4 different books be arranged in a row on a shelf?",
+          options: ["28","48","20","24","16"],
+          answer: "24",
+          solution: "4 different books can be arranged in 4! = 4 × 3 × 2 × 1 = 24 ways.",
+          subject: "logic"
+        },
+        {
+          text: "In how many different ways can 5 different books be arranged in a row on a shelf?",
+          options: ["115","125","120","25","240"],
+          answer: "120",
+          solution: "5 different books can be arranged in 5! = 5 × 4 × 3 × 2 × 1 = 120 ways.",
+          subject: "logic"
+        },
+        {
+          text: "In how many different ways can 6 different books be arranged in a row on a shelf?",
+          options: ["1440","720","714","36","726"],
+          answer: "720",
+          solution: "6 different books can be arranged in 6! = 6 × 5 × 4 × 3 × 2 × 1 = 720 ways.",
+          subject: "logic"
+        },
+        {
+          text: "In how many different ways can 7 different books be arranged in a row on a shelf?",
+          options: ["10080","5047","5033","49","5040"],
+          answer: "5040",
+          solution: "7 different books can be arranged in 7! = 7 × 6 × 5 × 4 × 3 × 2 × 1 = 5040 ways.",
+          subject: "logic"
+        },
+        {
+          text: "In how many ways can you choose 2 people from a group of 5 people?",
+          options: ["11","12","9","10","15"],
+          answer: "10",
+          solution: "Number of ways = 5C2 = 5!/(2!×3!) = 10.",
+          subject: "logic"
+        },
+        {
+          text: "In how many ways can you choose 2 people from a group of 6 people?",
+          options: ["17","14","15","16","12"],
+          answer: "15",
+          solution: "Number of ways = 6C2 = 6!/(2!×4!) = 15.",
+          subject: "logic"
+        },
+        {
+          text: "In how many ways can you choose 2 people from a group of 4 people?",
+          options: ["11","7","8","6","5"],
+          answer: "6",
+          solution: "Number of ways = 4C2 = 4!/(2!×2!) = 6.",
+          subject: "logic"
+        },
+        {
+          text: "In how many ways can you choose 2 people from a group of 7 people?",
+          options: ["22","23","14","21","20"],
+          answer: "21",
+          solution: "Number of ways = 7C2 = 7!/(2!×5!) = 21.",
+          subject: "logic"
+        },
+        {
+          text: "In how many ways can you choose 3 people from a group of 5 people?",
+          options: ["13","11","10","9","15"],
+          answer: "10",
+          solution: "Number of ways = 5C3 = 5!/(3!×2!) = 10.",
+          subject: "logic"
+        },
+        {
+          text: "What is the probability of rolling an even number on a fair six-sided die?",
+          options: ["2/5","1/2","5/6","3/4","1/3"],
+          answer: "1/2",
+          solution: "3 of the 6 faces (2, 4, 6) are even, so the probability is 3/6 = 1/2.",
+          subject: "logic"
+        },
+        {
+          text: "What is the probability of rolling a number greater than 4 on a fair six-sided die?",
+          options: ["2/5","1/2","1/3","1/4","1/5"],
+          answer: "1/3",
+          solution: "2 of the 6 faces (5, 6) are greater than 4, so the probability is 2/6 = 1/3.",
+          subject: "logic"
+        },
+        {
+          text: "A fair coin is flipped twice. What is the probability of getting two heads?",
+          options: ["1/2","2/3","1/4","3/5","2/5"],
+          answer: "1/4",
+          solution: "There are 4 equally likely outcomes (HH, HT, TH, TT), and only 1 gives two heads, so the probability is 1/4.",
+          subject: "logic"
+        },
+        {
+          text: "What is the probability of rolling a multiple of 3 on a fair six-sided die?",
+          options: ["2/5","1/3","5/6","3/4","2/3"],
+          answer: "1/3",
+          solution: "2 of the 6 faces (3, 6) are multiples of 3, so the probability is 2/6 = 1/3.",
+          subject: "logic"
+        },
+        {
+          text: "A bag contains 3 red and 2 blue balls. One ball is drawn at random. What is the probability that it is red?",
+          options: ["2/5","2/3","3/5","1/3","1/2"],
+          answer: "3/5",
+          solution: "There are 3 red balls out of 5 total, so the probability is 3/5.",
+          subject: "logic"
+        }
+      ];
+
+      for (const q of kangarooExtraQuestions) {
+        await pool.query(
+          `INSERT INTO questions (difficulty, type, text, answer, options, solution, source, subject)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          ['kangaroo', 'multipleChoice', q.text, q.answer, JSON.stringify(q.options), q.solution, 'Kangaroo Practice Bank', q.subject]
+        );
+      }
+      console.log('Seeded 100 Kangaroo Practice Bank questions');
+    }
+
     console.log('Database tables initialized');
   } catch (err) {
     console.error('Error initializing database:', err);

@@ -909,6 +909,147 @@ async function initializeDB() {
       console.log('Seeded 20 Olympiad questions');
     }
 
+    // Seed a second, more detailed batch of Olympiad questions (idempotent).
+    // Solutions here use a richer format: numbered Step lines, an explicit
+    // Formula line, a worked Example line, and (where useful) a Diagram block,
+    // all rendered by the frontend as distinct, readable sections.
+    const olympiad2Check = await pool.query(
+      "SELECT COUNT(*) FROM questions WHERE source = 'BMO Olympiad II'"
+    );
+    if (parseInt(olympiad2Check.rows[0].count) === 0) {
+      const olympiad2Questions = [
+        {
+          text: "Find the sum of the first 10 triangular numbers (1, 3, 6, 10, ...).",
+          answer: "220",
+          solution: "Step 1: The k-th triangular number is the sum of the first k whole numbers: T_k = k(k+1)/2.\nStep 2: The sum of the first n triangular numbers has a closed form.\nFormula: T_1 + T_2 + ... + T_n = n(n+1)(n+2)/6\nStep 3: Substitute n = 10: (10 × 11 × 12)/6 = 1320/6 = 220.\nExample: Check the formula on a smaller case — the first 4 triangular numbers are 1, 3, 6, 10, summing to 20. Using the formula: (4×5×6)/6 = 120/6 = 20 ✓\nDiagram: Triangular numbers grow as rows of dots:\n*\n* *\n* * *\n* * * * (this row alone is T4 = 10 dots)",
+          subject: "number"
+        },
+        {
+          text: "Two positive integers have HCF 6 and LCM 210. If one of the numbers is 30, find the other.",
+          answer: "42",
+          solution: "Step 1: For any two positive integers a and b, their HCF and LCM are related to their product.\nFormula: HCF(a, b) × LCM(a, b) = a × b\nStep 2: Substitute the known values: 6 × 210 = 30 × b.\nStep 3: 1260 = 30 × b, so b = 1260 ÷ 30 = 42.\nExample: Check with a simpler pair — 4 and 6 have HCF 2 and LCM 12. Indeed 2 × 12 = 24 = 4 × 6 ✓",
+          subject: "number"
+        },
+        {
+          text: "In how many ways can 5 people be seated around a circular table (rotations count as the same arrangement)?",
+          answer: "24",
+          solution: "Step 1: For arrangements in a straight line, n distinct people can be ordered in n! ways.\nStep 2: Around a circle, rotating everyone by one seat gives the 'same' arrangement, so we divide by n to remove rotational duplicates.\nFormula: Circular arrangements of n people = (n − 1)!\nStep 3: For n = 5: (5 − 1)! = 4! = 4 × 3 × 2 × 1 = 24.\nExample: For 3 people A, B, C there are (3−1)! = 2 arrangements around a table: A-B-C and A-C-B (clockwise).",
+          subject: "logic"
+        },
+        {
+          text: "Find the number of diagonals in a regular octagon (8-sided polygon).",
+          answer: "20",
+          solution: "Step 1: A diagonal joins two non-adjacent vertices of a polygon.\nFormula: Number of diagonals of an n-sided polygon = n(n − 3)/2\nStep 2: Substitute n = 8: 8 × (8 − 3)/2 = 8 × 5/2 = 40/2 = 20.\nExample: A square (n=4) has 4×1/2 = 2 diagonals — easy to check by drawing both crossing lines.\nDiagram:\n  1---2\n /|   |\\\n8 |   | 3\n| |   | |\n7 |   | 4\n \\|   |/\n  6---5   (dashed diagonals like 1-4, 2-6, etc. connect non-adjacent vertices)",
+          subject: "geometry"
+        },
+        {
+          text: "A number leaves remainder 4 when divided by 7, and remainder 6 when divided by 9. Find the smallest such positive number.",
+          answer: "60",
+          solution: "Step 1: Write the number as x = 7k + 4 for some whole number k (from the first condition).\nStep 2: Substitute into the second condition: 7k + 4 ≡ 6 (mod 9), so 7k ≡ 2 (mod 9).\nStep 3: The inverse of 7 mod 9 is 4, since 7 × 4 = 28 ≡ 1 (mod 9). Multiply both sides by 4: k ≡ 8 (mod 9).\nFormula: This is an application of the Chinese Remainder Theorem for two coprime moduli.\nStep 4: The smallest non-negative k is 8, giving x = 7 × 8 + 4 = 60.\nExample: Check: 60 ÷ 7 = 8 remainder 4 ✓, and 60 ÷ 9 = 6 remainder 6 ✓",
+          subject: "number"
+        },
+        {
+          text: "In how many ways can a committee of 3 people be chosen from a group of 8 people?",
+          answer: "56",
+          solution: "Step 1: Since the order of choosing committee members doesn't matter, this is a combination, not a permutation.\nFormula: nCr = n! / (r! × (n − r)!)\nStep 2: Substitute n = 8, r = 3: 8! / (3! × 5!) = (8 × 7 × 6) / (3 × 2 × 1) = 336 / 6 = 56.\nExample: Choosing 2 from 4 people {A,B,C,D} gives 4C2 = 6 pairs: AB, AC, AD, BC, BD, CD.",
+          subject: "logic"
+        },
+        {
+          text: "The interior angle of a regular polygon is 156°. How many sides does it have?",
+          answer: "15",
+          solution: "Step 1: Interior and exterior angles of a polygon are supplementary (sum to 180°).\nStep 2: Exterior angle = 180° − 156° = 24°.\nFormula: Number of sides n = 360° ÷ (exterior angle)\nStep 3: n = 360 ÷ 24 = 15.\nExample: A regular hexagon has interior angle 120°, so exterior angle = 60° and n = 360/60 = 6 ✓",
+          subject: "geometry"
+        },
+        {
+          text: "Find the value of 1 − 2 + 3 − 4 + 5 − 6 + ... − 100.",
+          answer: "-50",
+          solution: "Step 1: Group the terms in consecutive pairs: (1 − 2) + (3 − 4) + (5 − 6) + ... + (99 − 100).\nStep 2: Each pair equals −1, and there are 100 ÷ 2 = 50 pairs.\nFormula: Sum = 50 × (−1) = −50\nExample: For a shorter version 1 − 2 + 3 − 4, we get (1−2)+(3−4) = −1 + −1 = −2.",
+          subject: "algebra"
+        },
+        {
+          text: "A cylinder has radius 7 cm and height 10 cm. Find its volume in terms of π.",
+          answer: "490π",
+          solution: "Step 1: The volume of a cylinder is the area of its circular base times its height.\nFormula: V = πr²h\nStep 2: Substitute r = 7, h = 10: V = π × 7² × 10 = π × 49 × 10 = 490π cm³.\nExample: A cylinder with radius 2 and height 5 has volume π × 4 × 5 = 20π.\nDiagram:\n   _______\n  /       \\   <- top circle, radius r\n |         |\n |    h    |  <- height\n |         |\n  \\_______/   <- bottom circle, radius r",
+          subject: "geometry"
+        },
+        {
+          text: "What is the units digit of 7^2023?",
+          answer: "3",
+          solution: "Step 1: List the units digits of powers of 7: 7¹=7, 7²=49→9, 7³=343→3, 7⁴=2401→1, then the pattern repeats every 4 powers.\nFormula: units digit of 7^n depends only on n mod 4 (cycle length 4: 7, 9, 3, 1)\nStep 2: Find 2023 mod 4. Since 2023 = 4 × 505 + 3, the remainder is 3.\nStep 3: A remainder of 3 corresponds to the 3rd number in the cycle [7, 9, 3, 1], which is 3.\nExample: 7^7 should also end in 3, since 7 mod 4 = 3. Indeed 7^7 = 823543, ending in 3 ✓",
+          subject: "number"
+        },
+        {
+          text: "Find the number of trailing zeros in 100! (100 factorial).",
+          answer: "24",
+          solution: "Step 1: A trailing zero comes from a factor of 10 = 2 × 5. In a factorial, factors of 2 are far more common than factors of 5, so we only need to count factors of 5.\nFormula: Number of trailing zeros in n! = ⌊n/5⌋ + ⌊n/25⌋ + ⌊n/125⌋ + ...\nStep 2: For n = 100: ⌊100/5⌋ + ⌊100/25⌋ + ⌊100/125⌋ = 20 + 4 + 0 = 24.\nExample: 10! = 3628800, which has ⌊10/5⌋ = 2 trailing zeros — matches!",
+          subject: "number"
+        },
+        {
+          text: "Three consecutive positive integers have a product of 990. Find their sum.",
+          answer: "30",
+          solution: "Step 1: If the middle integer is n, the three consecutive integers are (n−1), n, (n+1), with product close to n³.\nStep 2: Estimate n ≈ ∛990 ≈ 9.97, so try n = 10: the integers 9, 10, 11.\nStep 3: Check: 9 × 10 × 11 = 990 ✓\nFormula: Sum of three consecutive integers centred on n = 3n\nStep 4: Sum = 9 + 10 + 11 = 30 (or 3 × 10 = 30 using the formula).",
+          subject: "number"
+        },
+        {
+          text: "A regular hexagon is inscribed in a circle of radius 6 cm. Find its perimeter.",
+          answer: "36",
+          solution: "Step 1: A regular hexagon can be split into 6 equilateral triangles, each with two sides equal to the circle's radius.\nStep 2: Because the triangles are equilateral, every side — including the hexagon's own side — equals the radius.\nFormula: side of inscribed regular hexagon = radius of circumscribing circle\nStep 3: Side = 6 cm, so perimeter = 6 × 6 = 36 cm.\nExample: A hexagon inscribed in a circle of radius 10 cm would have perimeter 6 × 10 = 60 cm.\nDiagram:\n      __\n   /      \\\n  |  center |\n   \\  __  /   (6 corners on the circle, 6 equal triangular slices from the centre)",
+          subject: "geometry"
+        },
+        {
+          text: "The 8 letters of the word OLYMPIAD (all distinct) are rearranged so that the vowels O, I and A are always kept together. How many arrangements are possible?",
+          answer: "4320",
+          solution: "Step 1: Treat the block of 3 vowels (O, I, A) as a single unit. Together with the 5 consonants (L, Y, M, P, D), that makes 6 units to arrange.\nFormula: arrangements = (units)! × (ways to arrange inside the block)!\nStep 2: The 6 units can be arranged in 6! = 720 ways.\nStep 3: Within the vowel block, the 3 vowels can be arranged among themselves in 3! = 6 ways.\nStep 4: Total arrangements = 720 × 6 = 4320.\nExample: For the shorter word 'CAT' with vowel A kept 'together' (trivially, since it's alone), arrangements = 2! × 1! = 2 (CAT, TAC... treating C,T as the other block).",
+          subject: "logic"
+        },
+        {
+          text: "Find the remainder when 2^100 is divided by 13.",
+          answer: "3",
+          solution: "Step 1: By Fermat's Little Theorem, since 13 is prime and does not divide 2: 2^12 ≡ 1 (mod 13).\nFormula: a^(p−1) ≡ 1 (mod p) for prime p, where a is not a multiple of p\nStep 2: Find 100 mod 12. Since 100 = 12 × 8 + 4, the remainder is 4.\nStep 3: So 2^100 ≡ 2^4 (mod 13). Compute 2^4 = 16, and 16 mod 13 = 3.\nExample: Check a smaller case: 2^12 mod 13 should be 1. Indeed, 2^12 = 4096 = 13×315 + 1 ✓",
+          subject: "number"
+        },
+        {
+          text: "A triangle has sides 8 cm, 15 cm and 17 cm. Find its area.",
+          answer: "60",
+          solution: "Step 1: Check whether this is a right-angled triangle using the converse of Pythagoras' theorem.\nFormula: a² + b² = c² for a right triangle with hypotenuse c\nStep 2: 8² + 15² = 64 + 225 = 289, and 17² = 289. Since these match, the triangle is right-angled with hypotenuse 17.\nStep 3: For a right triangle, area = ½ × (product of the two legs).\nStep 4: Area = ½ × 8 × 15 = ½ × 120 = 60 cm².\nExample: Confirm with Heron's formula: s = (8+15+17)/2 = 20. Area = √(20×12×5×3) = √3600 = 60 ✓\nDiagram:\n|\\\n| \\\n15  \\ 17\n|    \\\n|_____\\\n   8",
+          subject: "geometry"
+        },
+        {
+          text: "Solve for x: 5^(x+1) = 125^(x−1).",
+          answer: "2",
+          solution: "Step 1: Rewrite both sides using the same base. Since 125 = 5³, we have 125^(x−1) = 5^(3(x−1)) = 5^(3x−3).\nFormula: if a^m = a^n (same base a), then m = n\nStep 2: Set the exponents equal: x + 1 = 3x − 3.\nStep 3: Rearranging: 1 + 3 = 3x − x, so 4 = 2x, giving x = 2.\nExample: Check: 5^(2+1) = 5³ = 125, and 125^(2−1) = 125¹ = 125 ✓",
+          subject: "algebra"
+        },
+        {
+          text: "Find the sum of all positive divisors of 360 (= 2³ × 3² × 5).",
+          answer: "1170",
+          solution: "Step 1: Write 360 in its prime factorisation: 360 = 2³ × 3² × 5¹.\nFormula: sum of divisors σ(n) = ∏ (p^(k+1) − 1)/(p − 1) over each prime power p^k in n\nStep 2: For 2³: (2⁴ − 1)/(2 − 1) = 15/1 = 15.\nStep 3: For 3²: (3³ − 1)/(3 − 1) = 26/2 = 13.\nStep 4: For 5¹: (5² − 1)/(5 − 1) = 24/4 = 6.\nStep 5: Multiply: 15 × 13 × 6 = 1170.\nExample: For 12 = 2² × 3: σ(12) = (7/1) × (8/2) = 7 × 4 = 28. Check directly: 1+2+3+4+6+12 = 28 ✓",
+          subject: "number"
+        },
+        {
+          text: "A ladder 13 m long leans against a vertical wall with its foot 5 m from the base of the wall. How high up the wall does the ladder reach?",
+          answer: "12",
+          solution: "Step 1: The ladder, wall and ground form a right-angled triangle, with the ladder as the hypotenuse.\nFormula: (height)² + (base)² = (hypotenuse)² — Pythagoras' theorem\nStep 2: height² = 13² − 5² = 169 − 25 = 144.\nStep 3: height = √144 = 12 m.\nExample: A 10 m ladder with its foot 6 m from the wall reaches √(100−36) = √64 = 8 m up.\nDiagram:\n|\\\n| \\\n|  \\ 13 m (ladder)\n12  \\\n|    \\\n|_____\\\n  5 m (foot to wall)",
+          subject: "geometry"
+        },
+        {
+          text: "Find the sum of the interior angles of a 12-sided polygon (dodecagon).",
+          answer: "1800",
+          solution: "Step 1: Any polygon can be split into triangles by drawing diagonals from one vertex; an n-sided polygon splits into (n − 2) triangles.\nFormula: sum of interior angles = (n − 2) × 180°\nStep 2: Substitute n = 12: (12 − 2) × 180 = 10 × 180 = 1800°.\nExample: A pentagon (n=5) has angle sum (5−2)×180 = 540°, matching the known result.",
+          subject: "geometry"
+        }
+      ];
+
+      for (const q of olympiad2Questions) {
+        await pool.query(
+          `INSERT INTO questions (difficulty, type, text, answer, options, solution, source, subject)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          ['olympiad', 'shortAnswer', q.text, q.answer, null, q.solution, 'BMO Olympiad II', q.subject]
+        );
+      }
+      console.log('Seeded 20 additional detailed Olympiad questions');
+    }
+
     // Seed Junior Kangaroo 2025 questions (idempotent)
     const kangarooCheck = await pool.query(
       "SELECT COUNT(*) FROM questions WHERE source = 'Junior Kangaroo 2025'"

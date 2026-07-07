@@ -4,7 +4,7 @@ import './App.css';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 const PAPER_QUESTIONS = 15;
-const PAPER_TIME = 30 * 60; // 30 minutes in seconds
+const QUESTION_TIME = 60; // 1 minute per question, in seconds
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -29,7 +29,6 @@ export default function App() {
   // Paper-level state
   const [paperActive, setPaperActive] = useState(false);
   const [paperComplete, setPaperComplete] = useState(false);
-  const [paperTimeRemaining, setPaperTimeRemaining] = useState(PAPER_TIME);
   const [paperStartTime, setPaperStartTime] = useState(null);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [paperResults, setPaperResults] = useState([]);
@@ -39,6 +38,7 @@ export default function App() {
   const [answered, setAnswered] = useState(false);
   const [userAnswer, setUserAnswer] = useState('');
   const [result, setResult] = useState(null);
+  const [questionTimeRemaining, setQuestionTimeRemaining] = useState(QUESTION_TIME);
 
   const loadQuestion = async () => {
     try {
@@ -47,13 +47,13 @@ export default function App() {
       setAnswered(false);
       setUserAnswer('');
       setResult(null);
+      setQuestionTimeRemaining(QUESTION_TIME);
     } catch (err) {
       console.error('Error loading question:', err);
     }
   };
 
   const startPaper = async () => {
-    setPaperTimeRemaining(PAPER_TIME);
     setPaperStartTime(Date.now());
     setPaperActive(true);
     setPaperComplete(false);
@@ -65,6 +65,7 @@ export default function App() {
       setAnswered(false);
       setUserAnswer('');
       setResult(null);
+      setQuestionTimeRemaining(QUESTION_TIME);
     } catch (err) {
       console.error('Error loading question:', err);
     }
@@ -113,12 +114,12 @@ export default function App() {
     }
   };
 
-  const finishPaper = async (results, timeRemaining) => {
+  const finishPaper = async (results) => {
     setPaperActive(false);
     setPaperComplete(true);
     setCurrentQuestion(null);
     const correctCount = results.filter(r => r.correct).length;
-    const timeTaken = PAPER_TIME - timeRemaining;
+    const timeTaken = paperStartTime ? Math.round((Date.now() - paperStartTime) / 1000) : 0;
     const coinsEarned = correctCount * coinsPerCorrect(difficulty);
     try {
       await axios.post(`${API_URL}/api/papers/complete`, {
@@ -140,27 +141,56 @@ export default function App() {
   const handleNextQuestion = () => {
     const nextIndex = questionIndex + 1;
     if (nextIndex >= PAPER_QUESTIONS) {
-      finishPaper(paperResults, paperTimeRemaining);
+      finishPaper(paperResults);
     } else {
       setQuestionIndex(nextIndex);
       loadQuestion();
     }
   };
 
-  // Paper-level countdown timer — shared across all questions
+  // Called when the per-question 1-minute timer runs out. The question is
+  // recorded as an incorrect/skipped attempt and the paper moves on immediately.
+  const handleSkipQuestion = async () => {
+    if (!currentQuestion || answered) return;
+    const newResults = [...paperResults, { correct: false, subject: currentQuestion.subject, skipped: true }];
+    setPaperResults(newResults);
+    try {
+      await axios.post(`${API_URL}/api/progress/update`, {
+        user_id: currentUser.id,
+        correct: false,
+        difficulty
+      });
+      const progressResponse = await axios.get(`${API_URL}/api/progress/${currentUser.id}`);
+      setProgress(progressResponse.data.progress);
+      setSessions(progressResponse.data.sessions || []);
+    } catch (err) {
+      console.error('Error recording skipped question:', err);
+    }
+
+    const nextIndex = questionIndex + 1;
+    if (nextIndex >= PAPER_QUESTIONS) {
+      finishPaper(newResults);
+    } else {
+      setQuestionIndex(nextIndex);
+      loadQuestion();
+    }
+  };
+
+  // Per-question countdown timer — 1 minute per question, auto-skips on expiry
   useEffect(() => {
-    if (!paperActive) return;
+    if (!paperActive || !currentQuestion || answered) return;
     const interval = setInterval(() => {
-      setPaperTimeRemaining(t => {
+      setQuestionTimeRemaining(t => {
         if (t <= 1) {
-          finishPaper(paperResults, 0);
+          clearInterval(interval);
+          handleSkipQuestion();
           return 0;
         }
         return t - 1;
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [paperActive, paperResults]);
+  }, [paperActive, currentQuestion, answered]);
 
   // Load sessions when going to progress page
   useEffect(() => {
@@ -198,6 +228,48 @@ export default function App() {
     } catch {
       return null;
     }
+  };
+
+  // Renders a solution string as a sequence of labelled steps/formulas/examples,
+  // grouping consecutive "Diagram:" lines into a monospace block.
+  const renderSolution = (solution) => {
+    if (!solution) return null;
+    const lines = solution.split('\n');
+    const elements = [];
+    let diagramLines = null;
+
+    const flushDiagram = () => {
+      if (diagramLines) {
+        elements.push(
+          <pre key={`diagram-${elements.length}`} className="solution-diagram">
+            {diagramLines.join('\n')}
+          </pre>
+        );
+        diagramLines = null;
+      }
+    };
+
+    lines.forEach((rawLine, i) => {
+      const line = rawLine.trim();
+      if (line.startsWith('Diagram:')) {
+        flushDiagram();
+        diagramLines = [line.replace(/^Diagram:\s*/, '')];
+        return;
+      }
+      if (diagramLines && line !== '' && !/^(Step\s*\d*:|Formula:|Example:)/.test(line)) {
+        diagramLines.push(rawLine);
+        return;
+      }
+      flushDiagram();
+      if (line === '') return;
+      let className = 'solution-line';
+      if (/^Formula:/.test(line)) className += ' solution-formula';
+      else if (/^Example:/.test(line)) className += ' solution-example';
+      else if (/^Step\s*\d*:/.test(line)) className += ' solution-step';
+      elements.push(<p key={i} className={className}>{line}</p>);
+    });
+    flushDiagram();
+    return elements;
   };
 
   const difficultyLabel = (d) => {
@@ -370,7 +442,7 @@ export default function App() {
   }
 
   if (currentUser.type === 'child') {
-    const timerWarning = paperTimeRemaining < 300;
+    const timerWarning = questionTimeRemaining <= 15;
     const correctCount = paperResults.filter(r => r.correct).length;
     const graphData = buildGraphData();
     const subjectBreakdown = getSubjectBreakdown();
@@ -389,10 +461,10 @@ export default function App() {
 
     return (
       <div className="app">
-        {paperActive && (
+        {paperActive && currentQuestion && !answered && (
           <div className={`paper-timer${timerWarning ? ' warning' : ''}`}>
             <div className="paper-timer-label">Time Left</div>
-            <div className="paper-timer-value">{formatTime(paperTimeRemaining)}</div>
+            <div className="paper-timer-value">{formatTime(questionTimeRemaining)}</div>
           </div>
         )}
 
@@ -444,7 +516,7 @@ export default function App() {
               {!paperActive && !paperComplete && (
                 <div className="paper-start">
                   <h2>Ready for a challenge?</h2>
-                  <p>{PAPER_QUESTIONS} questions &middot; 30 minutes &middot; {difficultyLabel(difficulty)}</p>
+                  <p>{PAPER_QUESTIONS} questions &middot; 1 minute per question &middot; {difficultyLabel(difficulty)}</p>
                   <button className="btn-primary" onClick={startPaper}>Start Paper</button>
                 </div>
               )}
@@ -458,8 +530,10 @@ export default function App() {
                      correctCount >= 8  ? '👍 Good work!' :
                                           '💪 Keep practising!'}
                   </p>
-                  {paperTimeRemaining === 0 && (
-                    <p className="time-up">Time ran out!</p>
+                  {paperResults.some(r => r.skipped) && (
+                    <p className="time-up">
+                      ⏰ {paperResults.filter(r => r.skipped).length} question{paperResults.filter(r => r.skipped).length !== 1 ? 's' : ''} skipped (1-minute timer ran out)
+                    </p>
                   )}
                   {subjectBreakdown.length > 0 && (
                     <div className="subject-breakdown">
@@ -540,7 +614,7 @@ export default function App() {
                       </div>
                       <div className="solution">
                         <h3>Solution</h3>
-                        <p>{currentQuestion.solution}</p>
+                        <div className="solution-body">{renderSolution(currentQuestion.solution)}</div>
                       </div>
                       <button className="btn-primary" onClick={handleNextQuestion}>
                         {questionIndex + 1 < PAPER_QUESTIONS ? 'Next Question' : 'Finish Paper'}

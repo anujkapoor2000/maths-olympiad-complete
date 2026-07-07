@@ -391,6 +391,22 @@ button {
   font-size: 12px;
   font-weight: 600;
   margin-bottom: 1rem;
+  margin-right: 0.4rem;
+}
+
+.badge-level-easy {
+  background: var(--green-soft);
+  color: var(--green-soft-text);
+}
+
+.badge-level-medium {
+  background: var(--amber-soft);
+  color: var(--amber-soft-text);
+}
+
+.badge-level-hard {
+  background: var(--red-soft);
+  color: var(--red-soft-text);
 }
 
 .question-card h2 {

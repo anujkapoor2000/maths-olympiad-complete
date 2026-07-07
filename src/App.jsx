@@ -11,6 +11,7 @@ export default function App() {
   const [page, setPage] = useState('login');
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [difficulty, setDifficulty] = useState('year6');
+  const [level, setLevel] = useState('medium');
   const [progress, setProgress] = useState(null);
   const [sessions, setSessions] = useState([]);
 
@@ -41,7 +42,7 @@ export default function App() {
   const [questionTimeRemaining, setQuestionTimeRemaining] = useState(QUESTION_TIME);
 
   // Coin economy — configurable from the parent view
-  const [coinSettings, setCoinSettings] = useState({ correct_coins: 10, wrong_coins: 5, skip_coins: 2, coins_per_penny: 10 });
+  const [coinSettings, setCoinSettings] = useState({ easy_coins: 4, medium_coins: 6, hard_coins: 10, wrong_coins: 5, skip_coins: 2, coins_per_penny: 10 });
   const [coinSettingsDraft, setCoinSettingsDraft] = useState(null);
   const [coinSettingsStatus, setCoinSettingsStatus] = useState(null); // null | 'saving' | 'saved' | 'error'
   const [coinToast, setCoinToast] = useState(null); // { delta } | null
@@ -67,7 +68,7 @@ export default function App() {
 
   const loadQuestion = async () => {
     try {
-      const response = await axios.get(`${API_URL}/api/questions/${difficulty}`);
+      const response = await axios.get(`${API_URL}/api/questions/${difficulty}`, { params: { level } });
       setCurrentQuestion(response.data);
       setAnswered(false);
       setUserAnswer('');
@@ -85,7 +86,7 @@ export default function App() {
     setQuestionIndex(0);
     setPaperResults([]);
     try {
-      const response = await axios.get(`${API_URL}/api/questions/${difficulty}`);
+      const response = await axios.get(`${API_URL}/api/questions/${difficulty}`, { params: { level } });
       setCurrentQuestion(response.data);
       setAnswered(false);
       setUserAnswer('');
@@ -127,7 +128,8 @@ export default function App() {
         user_id: currentUser.id,
         outcome: correct ? 'correct' : 'incorrect',
         difficulty,
-        question_text: currentQuestion.text
+        question_text: currentQuestion.text,
+        question_level: currentQuestion.level
       });
       const coinsDelta = response.data.coinsDelta ?? 0;
       setResult({ correct, expected: currentQuestion.answer, coinsDelta });
@@ -186,7 +188,8 @@ export default function App() {
         user_id: currentUser.id,
         outcome: 'skipped',
         difficulty,
-        question_text: currentQuestion.text
+        question_text: currentQuestion.text,
+        question_level: currentQuestion.level
       });
       coinsDelta = response.data.coinsDelta ?? 0;
       flashCoinToast(coinsDelta);
@@ -311,6 +314,12 @@ export default function App() {
     return d.replace('year', 'Year ');
   };
 
+  const levelLabel = (lv) => {
+    if (lv === 'easy') return 'Easy';
+    if (lv === 'hard') return 'Hard';
+    return 'Medium';
+  };
+
   const handleUploadPaper = async () => {
     if (!uploadFile || !uploadName.trim()) {
       setUploadStatus('error');
@@ -397,7 +406,9 @@ export default function App() {
     setCoinSettingsStatus('saving');
     try {
       const payload = {
-        correct_coins: parseInt(coinSettingsDraft.correct_coins, 10) || 0,
+        easy_coins: parseInt(coinSettingsDraft.easy_coins, 10) || 0,
+        medium_coins: parseInt(coinSettingsDraft.medium_coins, 10) || 0,
+        hard_coins: parseInt(coinSettingsDraft.hard_coins, 10) || 0,
         wrong_coins: parseInt(coinSettingsDraft.wrong_coins, 10) || 0,
         skip_coins: parseInt(coinSettingsDraft.skip_coins, 10) || 0,
         coins_per_penny: Math.max(1, parseInt(coinSettingsDraft.coins_per_penny, 10) || 1)
@@ -579,9 +590,26 @@ export default function App() {
               )}
 
               {!paperActive && !paperComplete && (
+                <div className="difficulty-selector">
+                  <label>Level:</label>
+                  {['easy', 'medium', 'hard'].map(lv => (
+                    <label key={lv}>
+                      <input
+                        type="radio"
+                        value={lv}
+                        checked={level === lv}
+                        onChange={(e) => setLevel(e.target.value)}
+                      />
+                      {levelLabel(lv)}
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {!paperActive && !paperComplete && (
                 <div className="paper-start">
                   <h2>Ready for a challenge?</h2>
-                  <p>{PAPER_QUESTIONS} questions &middot; 1 minute per question &middot; {difficultyLabel(difficulty)}</p>
+                  <p>{PAPER_QUESTIONS} questions &middot; 1 minute per question &middot; {difficultyLabel(difficulty)} &middot; {levelLabel(level)}</p>
                   <button className="btn-primary" onClick={startPaper}>Start Paper</button>
                 </div>
               )}
@@ -636,6 +664,9 @@ export default function App() {
                 <div className="question-card">
                   <div className="question-header">
                     <span className="badge">{difficultyLabel(difficulty)}</span>
+                    {currentQuestion.level && (
+                      <span className={`badge badge-level-${currentQuestion.level}`}>{levelLabel(currentQuestion.level)}</span>
+                    )}
                     <span className="question-counter">
                       Question {questionIndex + 1} of {PAPER_QUESTIONS}
                     </span>
@@ -847,12 +878,30 @@ export default function App() {
               <>
                 <div className="coin-settings-grid">
                   <label>
-                    Correct answer (+coins)
+                    Easy — correct answer (+coins)
                     <input
                       type="number"
                       min="0"
-                      value={coinSettingsDraft.correct_coins}
-                      onChange={(e) => setCoinSettingsDraft({ ...coinSettingsDraft, correct_coins: e.target.value })}
+                      value={coinSettingsDraft.easy_coins}
+                      onChange={(e) => setCoinSettingsDraft({ ...coinSettingsDraft, easy_coins: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    Medium — correct answer (+coins)
+                    <input
+                      type="number"
+                      min="0"
+                      value={coinSettingsDraft.medium_coins}
+                      onChange={(e) => setCoinSettingsDraft({ ...coinSettingsDraft, medium_coins: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    Hard — correct answer (+coins)
+                    <input
+                      type="number"
+                      min="0"
+                      value={coinSettingsDraft.hard_coins}
+                      onChange={(e) => setCoinSettingsDraft({ ...coinSettingsDraft, hard_coins: e.target.value })}
                     />
                   </label>
                   <label>

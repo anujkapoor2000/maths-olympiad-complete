@@ -3334,6 +3334,31 @@ async function initializeDB() {
       console.log(`Seeded ${luckyDipQuestions.length} Lucky Dip Word Problems into Year 6`);
     }
 
+    // Seed the "Percentage Word Problems 6.2A" worksheet (Math Salamanders),
+    // idempotent — 6 Year 6 percentage word problems supplied by a parent.
+    const percentPackCheck = await pool.query(
+      "SELECT COUNT(*) FROM questions WHERE source = 'Percentage Word Problems 6.2A'"
+    );
+    if (parseInt(percentPackCheck.rows[0].count) === 0) {
+      const percentPackQuestions = [
+        { level: "medium", text: "A pie shop sells 32 apple pies, 33 pumpkin pies, 20 cherry pies, and 15 chocolate pies. What percentage of pies sold were apple or cherry?", answer: "52", solution: "Total pies: 32+33+20+15=100. Apple or cherry: 32+20=52. Percentage: 52/100=52%." },
+        { level: "medium", text: "Newton watches a movie with his friends. They watch 50% of the movie and then take a break. They then watch the remaining 65 minutes. How long was the movie, in minutes?", answer: "130", solution: "The remaining 65 minutes is the other 50% of the movie, so the whole movie is 65×2=130 minutes." },
+        { level: "hard", text: "Captain's Autos sells 22 used cars on Monday, and 18 cars on Tuesday. This was 25% of the number of sales for the week. How many cars did they sell altogether that week?", answer: "160", solution: "Monday and Tuesday sales: 22+18=40, which is 25% of the week. Whole week: 40÷0.25=160 cars." },
+        { level: "hard", text: "Sally spends 15% of her weekly budget on food, and 35% on rent. She has £350 left over. How much was her budget, in pounds?", answer: "700", solution: "Food and rent together: 15%+35%=50%, so the remaining 50% is £350. Whole budget: 350÷0.5=£700." },
+        { level: "medium", text: "There are 30 Year 6 students and 40 Year 7 students in a group. 10% of the Year 6 students and 25% of the Year 7 students are vegan. How many vegans are in the group altogether?", answer: "13", solution: "Year 6 vegans: 10% of 30=3. Year 7 vegans: 25% of 40=10. Total: 3+10=13." },
+        { level: "easy", text: "Tyger and Newton have a long jump competition. Tyger jumps 20% further than Newton. If Newton jumps 400cm, how far does Tyger jump, in cm?", answer: "480", solution: "Tyger's jump: 400 × 1.2 = 480cm." },
+      ];
+
+      for (const q of percentPackQuestions) {
+        await pool.query(
+          `INSERT INTO questions (difficulty, type, text, answer, options, solution, source, subject, level)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          ['year6', 'shortAnswer', q.text, q.answer, null, q.solution, 'Percentage Word Problems 6.2A', 'problem solving', q.level]
+        );
+      }
+      console.log(`Seeded ${percentPackQuestions.length} Percentage Word Problems into Year 6`);
+    }
+
     console.log('Database tables initialized');
   } catch (err) {
     console.error('Error initializing database:', err);

@@ -3163,6 +3163,146 @@ async function initializeDB() {
       console.log('Seeded 72 tiered Year 6/7/8 practice questions');
     }
 
+    // Seed a broad topic-coverage pack (idempotent) — ratios, probability,
+    // place value, geometry, algebra and problem solving, at every year
+    // (6/7/8) and difficulty tier (easy/medium/hard), so each tier's question
+    // pool is large and varied enough that a 15-question paper doesn't repeat.
+    const topicPackCheck = await pool.query(
+      "SELECT COUNT(*) FROM questions WHERE source = 'Topic Coverage Pack'"
+    );
+    if (parseInt(topicPackCheck.rows[0].count) === 0) {
+      const topicPackQuestions = [
+        // ------------------------------ RATIOS ------------------------------
+        { difficulty: "year6", level: "easy", text: "Simplify the ratio 8:12 to its simplest form.", answer: "2:3", solution: "8 and 12 share a highest common factor of 4. 8÷4=2, 12÷4=3, so 8:12 = 2:3.", subject: "ratios" },
+        { difficulty: "year6", level: "easy", text: "Share £20 between Amy and Ben in the ratio 2:3. How much does Ben get, in pounds?", answer: "12", solution: "2+3=5 parts, so each part is £20÷5=£4. Ben has 3 parts: 3×£4=£12.", subject: "ratios" },
+        { difficulty: "year6", level: "medium", text: "A recipe uses flour and sugar in the ratio 3:2. If you use 150g of sugar, how much flour do you need, in grams?", answer: "225", solution: "150g of sugar is 2 parts, so 1 part = 75g. Flour is 3 parts: 3×75=225g.", subject: "ratios" },
+        { difficulty: "year6", level: "medium", text: "Simplify the ratio 18:24:30 to its simplest form.", answer: "3:4:5", solution: "18, 24 and 30 share a highest common factor of 6. Dividing each by 6 gives 3:4:5.", subject: "ratios" },
+        { difficulty: "year6", level: "hard", text: "Three friends share £84 in the ratio 2:3:7. How much does the person with the largest share get, in pounds?", answer: "49", solution: "2+3+7=12 parts, so each part is £84÷12=£7. The largest share is 7 parts: 7×£7=£49.", subject: "ratios" },
+        { difficulty: "year6", level: "hard", text: "The ratio of red paint to blue paint is 5:3. If there are 40 litres of red paint, how many litres of blue paint are needed?", answer: "24", solution: "40 litres is 5 parts, so 1 part = 8 litres. Blue paint is 3 parts: 3×8=24 litres.", subject: "ratios" },
+        { difficulty: "year7", level: "easy", text: "Write the ratio 15:25 in its simplest form.", answer: "3:5", solution: "15 and 25 share a highest common factor of 5. 15÷5=3, 25÷5=5, so 15:25 = 3:5.", subject: "ratios" },
+        { difficulty: "year7", level: "easy", text: "A ratio is 4:7. If the first quantity is 20, find the second quantity.", answer: "35", solution: "20 is 4 parts, so 1 part = 5. The second quantity is 7 parts: 7×5=35.", subject: "ratios" },
+        { difficulty: "year7", level: "medium", text: "Two numbers are in the ratio 5:8 and their sum is 130. Find the smaller number.", answer: "50", solution: "5+8=13 parts, so 1 part = 130÷13=10. The smaller number is 5 parts: 5×10=50.", subject: "ratios" },
+        { difficulty: "year7", level: "medium", text: "A map has a scale of 1:25000. A distance on the map is 6cm. What is the real distance, in kilometres?", answer: "1.5", solution: "Real distance = 6×25000=150000cm = 1500m = 1.5km.", subject: "ratios" },
+        { difficulty: "year7", level: "hard", text: "A sum of money is divided in the ratio 3:5:12 and the smallest share is £45. Find the total sum, in pounds.", answer: "300", solution: "£45 is 3 parts, so 1 part = £15. Total is 3+5+12=20 parts: 20×£15=£300.", subject: "ratios" },
+        { difficulty: "year7", level: "hard", text: "If a:b = 2:3 and b:c = 4:5, find a:b:c in simplest form.", answer: "8:12:15", solution: "Scale a:b=2:3 to 8:12 and b:c=4:5 to 12:15 so both have b=12. Combined, a:b:c = 8:12:15.", subject: "ratios" },
+        { difficulty: "year8", level: "easy", text: "Simplify the ratio 36:48.", answer: "3:4", solution: "36 and 48 share a highest common factor of 12. 36÷12=3, 48÷12=4, so 36:48 = 3:4.", subject: "ratios" },
+        { difficulty: "year8", level: "easy", text: "Divide 90 in the ratio 4:5. What is the larger share?", answer: "50", solution: "4+5=9 parts, so 1 part = 90÷9=10. The larger share is 5 parts: 5×10=50.", subject: "ratios" },
+        { difficulty: "year8", level: "medium", text: "The ratio of boys to girls in a class is 3:4. There are 28 students in total. How many girls are there?", answer: "16", solution: "3+4=7 parts, so 1 part = 28÷7=4. Girls are 4 parts: 4×4=16.", subject: "ratios" },
+        { difficulty: "year8", level: "medium", text: "A photograph measuring 10cm by 15cm is enlarged in the ratio 3:2. What is the new longer side length, in cm?", answer: "22.5", solution: "The longer side (15cm) scales by 3/2: 15×3/2=22.5cm.", subject: "ratios" },
+        { difficulty: "year8", level: "hard", text: "Given x:y = 3:4 and y:z = 8:9, find x:y:z in simplest form.", answer: "6:8:9", solution: "Scale x:y=3:4 to 6:8 so y matches y:z=8:9. Combined, x:y:z = 6:8:9.", subject: "ratios" },
+        { difficulty: "year8", level: "hard", text: "£360 is shared between A, B and C so that A gets twice as much as B, and B gets three times as much as C. Find C's share, in pounds.", answer: "36", solution: "Let C=x, then B=3x and A=6x. Total: 10x=360, so x=36. C's share is £36.", subject: "ratios" },
+
+        // ---------------------------- PROBABILITY ----------------------------
+        { difficulty: "year6", level: "easy", text: "A bag contains 4 red balls and 6 blue balls. What is the probability of picking a red ball, as a fraction in simplest form?", answer: "2/5", solution: "P(red) = 4/10 = 2/5.", subject: "probability" },
+        { difficulty: "year6", level: "easy", text: "A fair coin is flipped once. What is the probability of getting heads, as a fraction?", answer: "1/2", solution: "There are 2 equally likely outcomes, 1 of which is heads: P(heads) = 1/2.", subject: "probability" },
+        { difficulty: "year6", level: "medium", text: "A die is rolled once. What is the probability of rolling an even number, as a fraction in simplest form?", answer: "1/2", solution: "The even numbers are 2, 4, 6, so P(even) = 3/6 = 1/2.", subject: "probability" },
+        { difficulty: "year6", level: "medium", text: "A bag has 3 green, 5 yellow and 2 red counters. What is the probability of NOT picking a red counter, as a fraction?", answer: "4/5", solution: "There are 10 counters, 8 of which are not red: P(not red) = 8/10 = 4/5.", subject: "probability" },
+        { difficulty: "year6", level: "hard", text: "Two fair coins are flipped. What is the probability of getting exactly one head, as a fraction?", answer: "1/2", solution: "The outcomes are HH, HT, TH, TT. Exactly one head occurs in 2 of the 4 outcomes: 2/4 = 1/2.", subject: "probability" },
+        { difficulty: "year6", level: "hard", text: "A spinner has 8 equal sections numbered 1 to 8. What is the probability of spinning a multiple of 3, as a fraction?", answer: "1/4", solution: "The multiples of 3 from 1-8 are 3 and 6, so P = 2/8 = 1/4.", subject: "probability" },
+        { difficulty: "year7", level: "easy", text: "A card is drawn from a standard deck of 52 cards. What is the probability it is a King, as a fraction in simplest form?", answer: "1/13", solution: "There are 4 Kings in 52 cards: P(King) = 4/52 = 1/13.", subject: "probability" },
+        { difficulty: "year7", level: "easy", text: "A bag contains 5 red and 15 blue marbles. Find the probability of picking a blue marble, as a decimal.", answer: "0.75", solution: "There are 20 marbles in total, 15 of which are blue: P(blue) = 15/20 = 0.75.", subject: "probability" },
+        { difficulty: "year7", level: "medium", text: "A die is rolled twice. What is the probability that both rolls show a 6, as a fraction?", answer: "1/36", solution: "P(6 on one roll) = 1/6, so for two independent rolls: (1/6)×(1/6) = 1/36.", subject: "probability" },
+        { difficulty: "year7", level: "medium", text: "In a class of 30 students, 18 study French and the rest study Spanish. A student is chosen at random. What is the probability they study Spanish, as a fraction in simplest form?", answer: "2/5", solution: "12 students study Spanish: P(Spanish) = 12/30 = 2/5.", subject: "probability" },
+        { difficulty: "year7", level: "hard", text: "A bag contains 3 red, 4 blue and 5 green balls. Two balls are drawn without replacement. What is the probability both are red, as a fraction?", answer: "1/22", solution: "P = (3/12)×(2/11) = 6/132 = 1/22.", subject: "probability" },
+        { difficulty: "year7", level: "hard", text: "The probability it rains tomorrow is 0.3. Assuming each day is independent, what is the probability it does NOT rain on either of the next two days?", answer: "0.49", solution: "P(no rain in one day) = 0.7. For two independent days: 0.7×0.7 = 0.49.", subject: "probability" },
+        { difficulty: "year8", level: "easy", text: "A letter is chosen at random from the word MATHS. What is the probability it is a vowel, as a fraction?", answer: "1/5", solution: "MATHS has 5 letters, only 1 of which (A) is a vowel: P(vowel) = 1/5.", subject: "probability" },
+        { difficulty: "year8", level: "easy", text: "A fair six-sided die is rolled. What is the probability of NOT rolling a 4, as a fraction?", answer: "5/6", solution: "5 of the 6 faces are not a 4: P(not 4) = 5/6.", subject: "probability" },
+        { difficulty: "year8", level: "medium", text: "Two fair dice are rolled and their scores are added. What is the probability the total is 7, as a fraction in simplest form?", answer: "1/6", solution: "There are 36 equally likely outcomes; 6 of them sum to 7: P = 6/36 = 1/6.", subject: "probability" },
+        { difficulty: "year8", level: "medium", text: "A box has 4 white and 6 black socks. One sock is drawn and not replaced, then a second is drawn. Find the probability both are white, as a fraction.", answer: "2/15", solution: "P = (4/10)×(3/9) = 12/90 = 2/15.", subject: "probability" },
+        { difficulty: "year8", level: "hard", text: "Events A and B are independent. P(A)=0.4 and P(B)=0.5. Find P(A and B).", answer: "0.2", solution: "For independent events, P(A and B) = P(A)×P(B) = 0.4×0.5 = 0.2.", subject: "probability" },
+        { difficulty: "year8", level: "hard", text: "A bag contains 5 red and 3 blue balls. Two balls are drawn without replacement. What is the probability that at least one is blue, as a fraction in simplest form?", answer: "9/14", solution: "P(no blue) = (5/8)×(4/7) = 20/56 = 5/14. P(at least one blue) = 1 − 5/14 = 9/14.", subject: "probability" },
+
+        // ---------------------------- PLACE VALUE ----------------------------
+        { difficulty: "year6", level: "easy", text: "What is the value of the digit 7 in the number 4,752?", answer: "700", solution: "The 7 is in the hundreds place, so its value is 7×100=700.", subject: "place value" },
+        { difficulty: "year6", level: "easy", text: "What is 6,000 + 300 + 20 + 5 written as a single number?", answer: "6325", solution: "Adding the place values: 6000+300+20+5=6325.", subject: "place value" },
+        { difficulty: "year6", level: "medium", text: "Round 47,382 to the nearest thousand.", answer: "47000", solution: "The hundreds digit is 3, which rounds down, so 47,382 rounds to 47,000.", subject: "place value" },
+        { difficulty: "year6", level: "medium", text: "What is the value of the digit 4 in the number 2.746?", answer: "0.04", solution: "The 4 is in the hundredths place, so its value is 4×0.01=0.04.", subject: "place value" },
+        { difficulty: "year6", level: "hard", text: "A number has 3 in the ten-thousands place, 0 in the thousands place, 5 in the hundreds place, 8 in the tens place and 2 in the units place. What is the number?", answer: "30582", solution: "Reading the digits in order gives 30582.", subject: "place value" },
+        { difficulty: "year6", level: "hard", text: "Round 6.4952 to 2 decimal places.", answer: "6.50", solution: "The third decimal digit is 5, which rounds up: 6.4952 → 6.50.", subject: "place value" },
+        { difficulty: "year7", level: "easy", text: "What is the value of the digit 9 in the number 39,104?", answer: "9000", solution: "The 9 is in the thousands place, so its value is 9×1000=9000.", subject: "place value" },
+        { difficulty: "year7", level: "easy", text: "Round 82,650 to the nearest hundred.", answer: "82700", solution: "The tens digit is 5, which rounds up, so 82,650 rounds to 82,700.", subject: "place value" },
+        { difficulty: "year7", level: "medium", text: "Write 4.5 × 10^3 as an ordinary number.", answer: "4500", solution: "4.5 × 10^3 = 4.5 × 1000 = 4500.", subject: "place value" },
+        { difficulty: "year7", level: "medium", text: "Round 0.03847 to 3 significant figures.", answer: "0.0385", solution: "The first 3 significant figures are 3, 8, 4; the next digit (7) rounds the 4 up to 5: 0.0385.", subject: "place value" },
+        { difficulty: "year7", level: "hard", text: "Write 0.000072 in standard form.", answer: "7.2 × 10^-5", solution: "0.000072 = 7.2 ÷ 100000 = 7.2 × 10^-5.", subject: "place value" },
+        { difficulty: "year7", level: "hard", text: "Estimate 398 × 51 by rounding each number to 1 significant figure.", answer: "20000", solution: "398 rounds to 400 and 51 rounds to 50: 400×50=20000.", subject: "place value" },
+        { difficulty: "year8", level: "easy", text: "What is the value of the digit 6 in the number 6,432,000?", answer: "6000000", solution: "The 6 is in the millions place, so its value is 6×1,000,000=6,000,000.", subject: "place value" },
+        { difficulty: "year8", level: "easy", text: "Round 3.14159 to 3 decimal places.", answer: "3.142", solution: "The fourth decimal digit is 5, which rounds the third digit up: 3.14159 → 3.142.", subject: "place value" },
+        { difficulty: "year8", level: "medium", text: "Write 3.6 × 10^-2 as an ordinary number.", answer: "0.036", solution: "3.6 × 10^-2 = 3.6 ÷ 100 = 0.036.", subject: "place value" },
+        { difficulty: "year8", level: "medium", text: "Round 728,491 to 2 significant figures.", answer: "730000", solution: "The first 2 significant figures are 7, 2; the next digit (8) rounds the 2 up to 3: 730,000.", subject: "place value" },
+        { difficulty: "year8", level: "hard", text: "Write 45,600,000 in standard form.", answer: "4.56 × 10^7", solution: "45,600,000 = 4.56 × 10,000,000 = 4.56 × 10^7.", subject: "place value" },
+        { difficulty: "year8", level: "hard", text: "Calculate (2.4 × 10^3) × (3 × 10^-2), giving your answer in standard form.", answer: "7.2 × 10^1", solution: "Multiply the coefficients: 2.4×3=7.2. Add the exponents: 3+(-2)=1. Result: 7.2 × 10^1.", subject: "place value" },
+
+        // ----------------------------- GEOMETRY ------------------------------
+        { difficulty: "year6", level: "easy", text: "How many degrees are there in a right angle?", answer: "90", solution: "A right angle measures exactly 90 degrees.", subject: "geometry" },
+        { difficulty: "year6", level: "easy", text: "What is the name of a 2D shape with 5 sides?", answer: "Pentagon", solution: "A polygon with 5 sides is called a pentagon.", subject: "geometry" },
+        { difficulty: "year6", level: "medium", text: "Find the perimeter of a rectangle with length 9cm and width 4cm, in cm.", answer: "26", solution: "Perimeter = 2×(length+width) = 2×(9+4) = 26cm.", subject: "geometry" },
+        { difficulty: "year6", level: "medium", text: "How many lines of symmetry does a square have?", answer: "4", solution: "A square has 4 lines of symmetry: 2 through opposite corners and 2 through opposite edge midpoints.", subject: "geometry" },
+        { difficulty: "year6", level: "hard", text: "Find the area of a triangle with base 10cm and height 6cm, in cm².", answer: "30", solution: "Area = (base×height)/2 = (10×6)/2 = 30cm².", subject: "geometry" },
+        { difficulty: "year6", level: "hard", text: "The angles of a triangle are in the ratio 2:3:4. Find the size of the largest angle, in degrees.", answer: "80", solution: "2+3+4=9 parts, so 1 part = 180÷9=20°. The largest angle is 4 parts: 4×20=80°.", subject: "geometry" },
+        { difficulty: "year7", level: "easy", text: "What is the sum of the interior angles of a quadrilateral, in degrees?", answer: "360", solution: "Any quadrilateral's interior angles sum to 360°.", subject: "geometry" },
+        { difficulty: "year7", level: "easy", text: "Find the circumference of a circle with radius 7cm. Use π = 22/7. Give your answer in cm.", answer: "44", solution: "Circumference = 2×π×r = 2×(22/7)×7 = 44cm.", subject: "geometry" },
+        { difficulty: "year7", level: "medium", text: "A rectangle has area 48cm² and width 6cm. Find its length, in cm.", answer: "8", solution: "Length = area ÷ width = 48 ÷ 6 = 8cm.", subject: "geometry" },
+        { difficulty: "year7", level: "medium", text: "Find the size of each exterior angle of a regular hexagon, in degrees.", answer: "60", solution: "Exterior angles of a regular polygon sum to 360°. For a hexagon (6 sides): 360÷6=60°.", subject: "geometry" },
+        { difficulty: "year7", level: "hard", text: "Find the area of a circle with radius 14cm. Use π = 22/7. Give your answer in cm².", answer: "616", solution: "Area = π×r² = (22/7)×14² = (22/7)×196 = 616cm².", subject: "geometry" },
+        { difficulty: "year7", level: "hard", text: "A right-angled triangle has legs of 9cm and 12cm. Find the length of the hypotenuse, in cm.", answer: "15", solution: "By Pythagoras: hypotenuse² = 9²+12² = 81+144 = 225, so hypotenuse = √225 = 15cm.", subject: "geometry" },
+        { difficulty: "year8", level: "easy", text: "What is the name of a polygon with 8 sides?", answer: "Octagon", solution: "A polygon with 8 sides is called an octagon.", subject: "geometry" },
+        { difficulty: "year8", level: "easy", text: "Find the volume of a cube with side length 4cm, in cm³.", answer: "64", solution: "Volume = side³ = 4³ = 64cm³.", subject: "geometry" },
+        { difficulty: "year8", level: "medium", text: "Find the volume of a cuboid with dimensions 5cm × 4cm × 3cm, in cm³.", answer: "60", solution: "Volume = length×width×height = 5×4×3 = 60cm³.", subject: "geometry" },
+        { difficulty: "year8", level: "medium", text: "Two similar rectangles have lengths 6cm and 9cm. If the area of the smaller rectangle is 24cm², find the area of the larger rectangle, in cm².", answer: "54", solution: "The length ratio is 6:9=2:3, so the area ratio is 4:9. Larger area = 24×(9/4) = 54cm².", subject: "geometry" },
+        { difficulty: "year8", level: "hard", text: "Find the total surface area of a cube with side length 5cm, in cm².", answer: "150", solution: "Surface area = 6×side² = 6×5² = 6×25 = 150cm².", subject: "geometry" },
+        { difficulty: "year8", level: "hard", text: "A cylinder has radius 3cm and height 10cm. Find its volume in terms of π (e.g. 90π).", answer: "90π", solution: "Volume = π×r²×h = π×3²×10 = 90π cm³.", subject: "geometry" },
+
+        // ------------------------------ ALGEBRA -------------------------------
+        { difficulty: "year6", level: "easy", text: "If x + 5 = 12, what is x?", answer: "7", solution: "Subtract 5 from both sides: x = 12−5 = 7.", subject: "algebra" },
+        { difficulty: "year6", level: "easy", text: "What is 3n when n = 4?", answer: "12", solution: "3n = 3×4 = 12.", subject: "algebra" },
+        { difficulty: "year6", level: "medium", text: "Solve: 2x + 3 = 11", answer: "4", solution: "Subtract 3: 2x=8. Divide by 2: x=4.", subject: "algebra" },
+        { difficulty: "year6", level: "medium", text: "If y − 6 = 15, find y.", answer: "21", solution: "Add 6 to both sides: y = 15+6 = 21.", subject: "algebra" },
+        { difficulty: "year6", level: "hard", text: "Solve: 3(x + 2) = 21", answer: "5", solution: "Divide by 3: x+2=7. Subtract 2: x=5.", subject: "algebra" },
+        { difficulty: "year6", level: "hard", text: "The perimeter of a square is (4x) cm. If the perimeter is 36cm, find x.", answer: "9", solution: "4x=36, so x=36÷4=9.", subject: "algebra" },
+        { difficulty: "year7", level: "easy", text: "Simplify: 3a + 5a", answer: "8a", solution: "3a+5a = (3+5)a = 8a.", subject: "algebra" },
+        { difficulty: "year7", level: "easy", text: "Solve: x/4 = 6", answer: "24", solution: "Multiply both sides by 4: x = 6×4 = 24.", subject: "algebra" },
+        { difficulty: "year7", level: "medium", text: "Solve: 5x − 4 = 2x + 11", answer: "5", solution: "Subtract 2x: 3x−4=11. Add 4: 3x=15. Divide by 3: x=5.", subject: "algebra" },
+        { difficulty: "year7", level: "medium", text: "Expand: 3(2x − 5)", answer: "6x - 15", solution: "3×2x=6x and 3×(-5)=-15, giving 6x−15.", subject: "algebra" },
+        { difficulty: "year7", level: "hard", text: "Solve the simultaneous equations x + y = 10 and x − y = 4. Find x.", answer: "7", solution: "Adding the equations: 2x=14, so x=7.", subject: "algebra" },
+        { difficulty: "year7", level: "hard", text: "Factorise: x^2 + 7x + 12", answer: "(x + 3)(x + 4)", solution: "Two numbers that multiply to 12 and add to 7 are 3 and 4, giving (x+3)(x+4).", subject: "algebra" },
+        { difficulty: "year8", level: "easy", text: "Simplify: 4x + 3y − x + 2y", answer: "3x + 5y", solution: "Combine x terms: 4x−x=3x. Combine y terms: 3y+2y=5y. Result: 3x+5y.", subject: "algebra" },
+        { difficulty: "year8", level: "easy", text: "Solve: 2x + 7 = 19", answer: "6", solution: "Subtract 7: 2x=12. Divide by 2: x=6.", subject: "algebra" },
+        { difficulty: "year8", level: "medium", text: "Solve: (2x − 1)/3 = 5", answer: "8", solution: "Multiply by 3: 2x−1=15. Add 1: 2x=16. Divide by 2: x=8.", subject: "algebra" },
+        { difficulty: "year8", level: "medium", text: "Factorise: x^2 − 9", answer: "(x - 3)(x + 3)", solution: "This is a difference of two squares: x²−9 = (x-3)(x+3).", subject: "algebra" },
+        { difficulty: "year8", level: "hard", text: "Solve: x^2 − 5x + 6 = 0. Give the smaller solution.", answer: "2", solution: "Factorising: (x−2)(x−3)=0, so x=2 or x=3. The smaller solution is 2.", subject: "algebra" },
+        { difficulty: "year8", level: "hard", text: "Solve the simultaneous equations 2x + y = 11 and x − y = 1. Find x.", answer: "4", solution: "Adding the equations: 3x=12, so x=4.", subject: "algebra" },
+
+        // --------------------------- PROBLEM SOLVING ---------------------------
+        { difficulty: "year6", level: "easy", text: "Tom has 24 sweets. He shares them equally among 4 friends. How many sweets does each friend get?", answer: "6", solution: "24÷4=6 sweets each.", subject: "problem solving" },
+        { difficulty: "year6", level: "easy", text: "A book costs £8. How much do 5 books cost, in pounds?", answer: "40", solution: "5×£8=£40.", subject: "problem solving" },
+        { difficulty: "year6", level: "medium", text: "A school has 320 pupils. If 3/8 of them are boys, how many boys are there?", answer: "120", solution: "3/8 of 320 = (320÷8)×3 = 40×3 = 120.", subject: "problem solving" },
+        { difficulty: "year6", level: "medium", text: "A train leaves at 09:45 and arrives at 11:20. How long, in minutes, is the journey?", answer: "95", solution: "From 09:45 to 11:20 is 1 hour 35 minutes, which is 60+35=95 minutes.", subject: "problem solving" },
+        { difficulty: "year6", level: "hard", text: "Sam buys 3 pens at 45p each and 2 notebooks at £1.20 each. How much change does he get from £5? Give your answer in pounds (e.g. 1.25).", answer: "1.25", solution: "Pens: 3×45p=£1.35. Notebooks: 2×£1.20=£2.40. Total: £3.75. Change from £5: £5−£3.75=£1.25.", subject: "problem solving" },
+        { difficulty: "year6", level: "hard", text: "A tank holds 180 litres when full. It is currently 2/3 full. How many more litres are needed to fill it?", answer: "60", solution: "Currently: 2/3×180=120 litres. Needed: 180−120=60 litres.", subject: "problem solving" },
+        { difficulty: "year7", level: "easy", text: "A recipe for 4 people needs 200g of rice. How much rice is needed for 10 people, in grams?", answer: "500", solution: "Rice per person: 200÷4=50g. For 10 people: 50×10=500g.", subject: "problem solving" },
+        { difficulty: "year7", level: "easy", text: "Jack runs 400m in 80 seconds. What is his speed, in metres per second?", answer: "5", solution: "Speed = distance÷time = 400÷80 = 5 m/s.", subject: "problem solving" },
+        { difficulty: "year7", level: "medium", text: "A shop reduces a £45 jacket by 20% in a sale. What is the sale price, in pounds?", answer: "36", solution: "20% of £45 = £9. Sale price: £45−£9=£36.", subject: "problem solving" },
+        { difficulty: "year7", level: "medium", text: "Tap A alone fills a tank in 12 hours. If tap A works alone for 4 hours, what fraction of the tank is filled?", answer: "1/3", solution: "In 1 hour, tap A fills 1/12 of the tank. In 4 hours: 4×(1/12)=4/12=1/3.", subject: "problem solving" },
+        { difficulty: "year7", level: "hard", text: "A car travels 210km in 3 hours, then 150km in 2 hours. Find its average speed for the whole journey, in km/h.", answer: "72", solution: "Total distance: 210+150=360km. Total time: 3+2=5h. Average speed: 360÷5=72km/h.", subject: "problem solving" },
+        { difficulty: "year7", level: "hard", text: "A photo printing shop charges a £3 set-up fee plus 25p per photo. How many photos can be printed for £13?", answer: "40", solution: "Money left after set-up fee: £13−£3=£10=1000p. Photos: 1000÷25=40.", subject: "problem solving" },
+        { difficulty: "year8", level: "easy", text: "A number increased by 15% is 92. What was the original number?", answer: "80", solution: "Let the number be x. 1.15x=92, so x=92÷1.15=80.", subject: "problem solving" },
+        { difficulty: "year8", level: "easy", text: "A cyclist travels at 18km/h for 2.5 hours. How far does she travel, in km?", answer: "45", solution: "Distance = speed×time = 18×2.5 = 45km.", subject: "problem solving" },
+        { difficulty: "year8", level: "medium", text: "Two numbers have a sum of 45 and a difference of 9. Find the larger number.", answer: "27", solution: "Larger number = (sum+difference)÷2 = (45+9)÷2 = 27.", subject: "problem solving" },
+        { difficulty: "year8", level: "medium", text: "A shop buys a jacket for £40 and sells it for £56. What is the percentage profit?", answer: "40", solution: "Profit: £56−£40=£16. Percentage profit: (16÷40)×100=40%.", subject: "problem solving" },
+        { difficulty: "year8", level: "hard", text: "A rectangular garden is 3m longer than it is wide. Its area is 70m². Find its width, in metres.", answer: "7", solution: "Let width=w. w(w+3)=70, so w²+3w−70=0, which factorises to (w−7)(w+10)=0. Since width is positive, w=7.", subject: "problem solving" },
+        { difficulty: "year8", level: "hard", text: "£2000 is invested at 5% compound interest per year. Find the value after 3 years, to the nearest pound.", answer: "2315", solution: "Value = 2000×1.05³ = 2000×1.157625 = 2315.25, which rounds to £2315.", subject: "problem solving" },
+      ];
+
+      for (const q of topicPackQuestions) {
+        await pool.query(
+          `INSERT INTO questions (difficulty, type, text, answer, options, solution, source, subject, level)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [q.difficulty, 'shortAnswer', q.text, q.answer, null, q.solution, 'Topic Coverage Pack', q.subject, q.level]
+        );
+      }
+      console.log(`Seeded ${topicPackQuestions.length} topic-coverage questions (ratios, probability, place value, geometry, algebra, problem solving)`);
+    }
+
     console.log('Database tables initialized');
   } catch (err) {
     console.error('Error initializing database:', err);
@@ -3251,17 +3391,33 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // Questions endpoints
+// exclude (optional): comma-separated question ids already served earlier in
+// the current paper, so a 15-question paper doesn't repeat the same question
+// twice while its tier's pool still has unused questions left.
 app.get('/api/questions/:difficulty', async (req, res) => {
   const { difficulty } = req.params;
-  const { level } = req.query;
+  const { level, exclude } = req.query;
+  const excludeIds = (exclude || '')
+    .split(',')
+    .map(s => parseInt(s, 10))
+    .filter(Number.isFinite);
   try {
     if (level) {
       const tiered = await pool.query(
-        'SELECT * FROM questions WHERE difficulty = $1 AND level = $2 ORDER BY RANDOM() LIMIT 1',
-        [difficulty, level]
+        'SELECT * FROM questions WHERE difficulty = $1 AND level = $2 AND NOT (id = ANY($3::int[])) ORDER BY RANDOM() LIMIT 1',
+        [difficulty, level, excludeIds]
       );
       if (tiered.rows[0]) {
         return res.json(tiered.rows[0]);
+      }
+      // Every question in this tier has already been served this paper —
+      // start reusing them rather than dead-ending the child's session.
+      const tieredAny = await pool.query(
+        'SELECT * FROM questions WHERE difficulty = $1 AND level = $2 ORDER BY RANDOM() LIMIT 1',
+        [difficulty, level]
+      );
+      if (tieredAny.rows[0]) {
+        return res.json(tieredAny.rows[0]);
       }
       // No questions tagged with this tier yet — fall back to any question
       // at this difficulty rather than dead-ending the child's session.

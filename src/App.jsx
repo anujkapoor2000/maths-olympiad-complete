@@ -102,9 +102,15 @@ export default function App() {
     return `£${(coins / perPenny / 100).toFixed(2)}`;
   };
 
+  // Question ids already served in the current paper, so a 15-question paper
+  // draws each question at most once while its tier still has unused ones.
+  const seenQuestionIdsRef = useRef([]);
+
   const loadQuestion = async () => {
     try {
-      const response = await axios.get(`${API_URL}/api/questions/${difficulty}`, { params: { level } });
+      const exclude = seenQuestionIdsRef.current.join(',');
+      const response = await axios.get(`${API_URL}/api/questions/${difficulty}`, { params: { level, exclude } });
+      if (response.data?.id) seenQuestionIdsRef.current.push(response.data.id);
       setCurrentQuestion(response.data);
       setAnswered(false);
       setUserAnswer('');
@@ -121,8 +127,10 @@ export default function App() {
     setPaperComplete(false);
     setQuestionIndex(0);
     setPaperResults([]);
+    seenQuestionIdsRef.current = [];
     try {
       const response = await axios.get(`${API_URL}/api/questions/${difficulty}`, { params: { level } });
+      if (response.data?.id) seenQuestionIdsRef.current.push(response.data.id);
       setCurrentQuestion(response.data);
       setAnswered(false);
       setUserAnswer('');

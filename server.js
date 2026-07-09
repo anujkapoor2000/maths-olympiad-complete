@@ -3303,6 +3303,37 @@ async function initializeDB() {
       console.log(`Seeded ${topicPackQuestions.length} topic-coverage questions (ratios, probability, place value, geometry, algebra, problem solving)`);
     }
 
+    // Seed the "Lucky Dip Word Problems" worksheet (CGP), idempotent — 12
+    // multi-step Year 6 word problems supplied by a parent.
+    const luckyDipCheck = await pool.query(
+      "SELECT COUNT(*) FROM questions WHERE source = 'Lucky Dip Word Problems (CGP)'"
+    );
+    if (parseInt(luckyDipCheck.rows[0].count) === 0) {
+      const luckyDipQuestions = [
+        { level: "medium", text: "Joseph has 189 toy cars in his collection. He gives 25 cars to his friend, and receives 12 more as birthday presents. How many does he have now?", answer: "176", solution: "189 − 25 = 164. Then 164 + 12 = 176." },
+        { level: "medium", text: "Lucy has saved up £1023 from birthday and Christmas money to buy her first car. She spends £900 on the car and needs £225 to pay for car insurance. How much more money does she need to save?", answer: "102", solution: "Money left after buying the car: £1023 − £900 = £123. She still needs £225 for insurance, so she needs £225 − £123 = £102 more." },
+        { level: "medium", text: "There are 766 pupils in a school. There are two Year 4 classes, which both have 28 pupils. How many pupils at school aren't in Year 4?", answer: "710", solution: "Year 4 pupils: 28 × 2 = 56. Pupils not in Year 4: 766 − 56 = 710." },
+        { level: "medium", text: "Captain Smyth is a pilot and he has flown 240 miles each day for the last six days. He is only allowed to fly 1,600 miles per week. How far can he fly on the last day?", answer: "160", solution: "Miles flown in 6 days: 240 × 6 = 1440. Miles left for the week: 1600 − 1440 = 160." },
+        { level: "hard", text: "There are 1024 tickets for a concert. Half of the tickets have been reserved online and 364 tickets have been bought at the box office. How many tickets are still available?", answer: "148", solution: "Reserved online: 1024 ÷ 2 = 512. Total sold: 512 + 364 = 876. Available: 1024 − 876 = 148." },
+        { level: "hard", text: "Toni starts work at 9:00am in a hair salon. She has 10 appointments booked before lunch. Each appointment lasts 20 minutes. What is the earliest time that she can have lunch?", answer: "12:20pm", solution: "Total appointment time: 10 × 20 = 200 minutes = 3 hours 20 minutes. Starting at 9:00am, lunch can begin at 12:20pm." },
+        { level: "easy", text: "In an orchestra there are 45 cellos. Each cello has four strings. Two of the cello players break a string. How many strings are left?", answer: "178", solution: "Total strings: 45 × 4 = 180. After 2 break: 180 − 2 = 178." },
+        { level: "medium", text: "In Year 6 there are three classes. One has 25 pupils and the other two have 26 pupils. Five Year 6 pupils are off sick today. How many Year 6 pupils are in school today?", answer: "72", solution: "Total Year 6 pupils: 25 + 26 + 26 = 77. In school today: 77 − 5 = 72." },
+        { level: "medium", text: "Lui has £1560 in his bank account. He spends half of that money on a holiday to New York. He spends another £120 on his electricity bill. How much does he have left?", answer: "660", solution: "Spent on holiday: £1560 ÷ 2 = £780, leaving £780. After the electricity bill: £780 − £120 = £660." },
+        { level: "hard", text: "Billie starts her shift at the hospital at 11:00am. She gets 40 minutes for lunch and her shift finishes at 5:00pm. If each procedure lasts for 40 minutes, how many could she fit in during her shift?", answer: "8", solution: "Shift length: 11:00am to 5:00pm = 6 hours = 360 minutes. Working time: 360 − 40 = 320 minutes. Procedures: 320 ÷ 40 = 8." },
+        { level: "hard", text: "Max has 1320 toy soldiers. He gives one third of these to his brother and then another 150 to his cousin. How many does he have left?", answer: "730", solution: "Given to brother: 1320 ÷ 3 = 440, leaving 1320 − 440 = 880. After giving 150 to his cousin: 880 − 150 = 730." },
+        { level: "hard", text: "Frankie has eight stops on his bus route. On the first four rounds he picks someone up at every stop, and on the fifth round he only picks up passengers at five of the stops. How many stops does he pick people up at?", answer: "37", solution: "First four rounds: 4 × 8 = 32 pickups. Fifth round: 5 more. Total: 32 + 5 = 37." },
+      ];
+
+      for (const q of luckyDipQuestions) {
+        await pool.query(
+          `INSERT INTO questions (difficulty, type, text, answer, options, solution, source, subject, level)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          ['year6', 'shortAnswer', q.text, q.answer, null, q.solution, 'Lucky Dip Word Problems (CGP)', 'problem solving', q.level]
+        );
+      }
+      console.log(`Seeded ${luckyDipQuestions.length} Lucky Dip Word Problems into Year 6`);
+    }
+
     console.log('Database tables initialized');
   } catch (err) {
     console.error('Error initializing database:', err);

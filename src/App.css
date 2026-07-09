@@ -1340,3 +1340,211 @@ button {
     padding: 1.5rem;
   }
 }
+
+/* ---------------------------------------------------------------------- */
+/* Achievement badges                                                     */
+/* ---------------------------------------------------------------------- */
+
+/* Tier accent colors — reused for the unlock popup and the badge shelf. */
+:root {
+  --tier-bronze: #b56a3a;
+  --tier-bronze-soft: #f7e6d8;
+  --tier-silver: #8b93a7;
+  --tier-silver-soft: #eaecf2;
+  --tier-gold: #d19a1f;
+  --tier-gold-soft: #fbedc4;
+  --tier-platinum: #7c5cff;
+  --tier-platinum-soft: #e8e2ff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --tier-bronze-soft: #3a2a1c;
+    --tier-silver-soft: #262a36;
+    --tier-gold-soft: #3a2f10;
+    --tier-platinum-soft: #2a2247;
+  }
+}
+
+/* Full-screen celebratory popup shown when a badge is unlocked */
+.badge-unlock-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1002;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: rgba(14, 15, 22, 0.28);
+  animation: badgeOverlayFade 3.4s ease forwards;
+}
+
+.badge-unlock-card {
+  position: relative;
+  background: var(--surface);
+  border: 2px solid var(--tier-color, var(--accent));
+  border-radius: var(--radius-lg);
+  padding: 2rem 2.5rem;
+  text-align: center;
+  box-shadow: var(--shadow-lg), 0 0 40px var(--tier-glow, var(--accent-soft));
+  animation: badgeCardPop 3.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.badge-unlock-card.tier-bronze { --tier-color: var(--tier-bronze); --tier-glow: var(--tier-bronze-soft); }
+.badge-unlock-card.tier-silver { --tier-color: var(--tier-silver); --tier-glow: var(--tier-silver-soft); }
+.badge-unlock-card.tier-gold { --tier-color: var(--tier-gold); --tier-glow: var(--tier-gold-soft); }
+.badge-unlock-card.tier-platinum { --tier-color: var(--tier-platinum); --tier-glow: var(--tier-platinum-soft); }
+
+.badge-unlock-burst {
+  position: absolute;
+  inset: -20%;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--tier-glow, var(--accent-soft)) 0%, transparent 70%);
+  animation: badgeBurst 1s ease-out forwards;
+  z-index: -1;
+}
+
+.badge-unlock-icon {
+  font-size: 56px;
+  line-height: 1;
+  animation: badgeIconBounce 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.badge-unlock-label {
+  margin-top: 0.75rem;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tier-color, var(--accent));
+}
+
+.badge-unlock-name {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 0.25rem;
+}
+
+.badge-unlock-desc {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-top: 0.35rem;
+  max-width: 22rem;
+}
+
+.badge-unlock-coins {
+  margin-top: 0.85rem;
+  display: inline-block;
+  padding: 0.35rem 0.9rem;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(135deg, #22c55e, var(--green));
+  color: white;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+@keyframes badgeCardPop {
+  0%   { opacity: 0; transform: scale(0.7) translateY(10px); }
+  10%  { opacity: 1; transform: scale(1.05) translateY(0); }
+  16%  { transform: scale(1); }
+  88%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.96) translateY(-6px); }
+}
+
+@keyframes badgeOverlayFade {
+  0%   { opacity: 0; }
+  8%   { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes badgeBurst {
+  0%   { opacity: 0.9; transform: scale(0.3); }
+  100% { opacity: 0; transform: scale(1.4); }
+}
+
+@keyframes badgeIconBounce {
+  0%   { transform: scale(0) rotate(-15deg); }
+  60%  { transform: scale(1.25) rotate(8deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+/* Badge shelf — collection view on the Progress page */
+.badge-shelf-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 1.5rem;
+}
+
+.badge-shelf-card h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--text);
+}
+
+.badge-shelf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.badge-shelf-item {
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.9rem 0.6rem;
+  text-align: center;
+  background: var(--surface-alt);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.badge-shelf-item.earned {
+  border-color: var(--tier-color, var(--accent));
+  background: var(--tier-glow, var(--accent-soft));
+  box-shadow: var(--shadow-sm);
+}
+
+.badge-shelf-item.earned:hover {
+  transform: translateY(-2px);
+}
+
+.badge-shelf-item.locked {
+  opacity: 0.5;
+  filter: grayscale(0.6);
+}
+
+.badge-shelf-item.tier-bronze { --tier-color: var(--tier-bronze); --tier-glow: var(--tier-bronze-soft); }
+.badge-shelf-item.tier-silver { --tier-color: var(--tier-silver); --tier-glow: var(--tier-silver-soft); }
+.badge-shelf-item.tier-gold { --tier-color: var(--tier-gold); --tier-glow: var(--tier-gold-soft); }
+.badge-shelf-item.tier-platinum { --tier-color: var(--tier-platinum); --tier-glow: var(--tier-platinum-soft); }
+
+.badge-shelf-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.badge-shelf-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 0.4rem;
+}
+
+.badge-shelf-desc {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+  line-height: 1.3;
+}
+
+.badge-shelf-date {
+  font-size: 10px;
+  color: var(--text-faint);
+  margin-top: 0.4rem;
+  font-weight: 600;
+}

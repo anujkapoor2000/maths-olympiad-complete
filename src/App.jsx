@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './App.css';
+import { BADGES } from './badges';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 const PAPER_QUESTIONS = 15;
@@ -50,6 +51,14 @@ export default function App() {
   const [coinToast, setCoinToast] = useState(null); // { delta } | null
   const coinToastTimeout = useRef(null);
 
+  // Achievement badges — earnedBadges is the persisted set (for the badge
+  // shelf); badgeQueue holds newly-unlocked badges waiting to be celebrated
+  // one at a time via the animated unlock popup.
+  const [earnedBadges, setEarnedBadges] = useState([]); // [{ badge_id, earned_at }]
+  const [badgeQueue, setBadgeQueue] = useState([]);
+  const [activeBadge, setActiveBadge] = useState(null);
+  const badgeTimeout = useRef(null);
+
   useEffect(() => {
     axios.get(`${API_URL}/api/settings/coins`).then(r => {
       setCoinSettings(r.data);
@@ -62,6 +71,31 @@ export default function App() {
     setCoinToast({ delta });
     coinToastTimeout.current = setTimeout(() => setCoinToast(null), 1800);
   };
+
+  const loadBadges = async (userId) => {
+    try {
+      const r = await axios.get(`${API_URL}/api/badges/${userId}`);
+      setEarnedBadges(r.data);
+    } catch (err) {
+      console.error('Error loading badges:', err);
+    }
+  };
+
+  const queueNewBadges = (badges) => {
+    if (!badges || badges.length === 0) return;
+    setBadgeQueue(prev => [...prev, ...badges]);
+  };
+
+  // Pop one badge at a time off the queue into the celebratory popup.
+  useEffect(() => {
+    if (activeBadge || badgeQueue.length === 0) return;
+    const [next, ...rest] = badgeQueue;
+    setActiveBadge(next);
+    setBadgeQueue(rest);
+    if (currentUser) loadBadges(currentUser.id);
+    if (badgeTimeout.current) clearTimeout(badgeTimeout.current);
+    badgeTimeout.current = setTimeout(() => setActiveBadge(null), 3400);
+  }, [badgeQueue, activeBadge, currentUser]);
 
   const formatCoinValue = (coins) => {
     const perPenny = coinSettings.coins_per_penny || 10;
@@ -108,6 +142,9 @@ export default function App() {
       setProgress(response.data.progress);
       setPage(response.data.type === 'child' ? 'challenge' : 'parentDash');
       setLoginForm({ username: '', password: '' });
+      if (response.data.type === 'child') {
+        loadBadges(response.data.id);
+      }
       if (response.data.type === 'parent') {
         const pid = response.data.id;
         axios.get(`${API_URL}/api/papers/list/${pid}`).then(r => setUploadedPapers(r.data)).catch(() => {});
@@ -138,6 +175,7 @@ export default function App() {
       setAnswered(true);
       setPaperResults(prev => [...prev, { correct, subject: currentQuestion.subject, coinsDelta }]);
       flashCoinToast(coinsDelta);
+      queueNewBadges(response.data.newBadges);
       const progressResponse = await axios.get(`${API_URL}/api/progress/${currentUser.id}`);
       setProgress(progressResponse.data.progress);
       setSessions(progressResponse.data.sessions || []);
@@ -154,14 +192,17 @@ export default function App() {
     const timeTaken = paperStartTime ? Math.round((Date.now() - paperStartTime) / 1000) : 0;
     const coinsEarned = results.reduce((sum, r) => sum + (r.coinsDelta || 0), 0);
     try {
-      await axios.post(`${API_URL}/api/papers/complete`, {
+      const response = await axios.post(`${API_URL}/api/papers/complete`, {
         user_id: currentUser.id,
         difficulty,
+        level,
         score: correctCount,
         total_questions: results.length,
         time_taken: timeTaken,
-        coins_earned: coinsEarned
+        coins_earned: coinsEarned,
+        results: results.map(r => ({ correct: r.correct, subject: r.subject, skipped: !!r.skipped }))
       });
+      queueNewBadges(response.data.newBadges);
       const progressResponse = await axios.get(`${API_URL}/api/progress/${currentUser.id}`);
       setProgress(progressResponse.data.progress);
       setSessions(progressResponse.data.sessions || []);
@@ -195,6 +236,7 @@ export default function App() {
       });
       coinsDelta = response.data.coinsDelta ?? 0;
       flashCoinToast(coinsDelta);
+      queueNewBadges(response.data.newBadges);
       const progressResponse = await axios.get(`${API_URL}/api/progress/${currentUser.id}`);
       setProgress(progressResponse.data.progress);
       setSessions(progressResponse.data.sessions || []);
@@ -238,6 +280,7 @@ export default function App() {
         setProgress(r.data.progress);
         setSessions(r.data.sessions || []);
       }).catch(() => {});
+      loadBadges(currentUser.id);
     }
   }, [page]);
 
@@ -547,6 +590,19 @@ export default function App() {
           </div>
         )}
 
+        {activeBadge && (
+          <div className="badge-unlock-overlay">
+            <div className={`badge-unlock-card tier-${activeBadge.tier}`}>
+              <div className="badge-unlock-burst" />
+              <div className="badge-unlock-icon">{activeBadge.icon}</div>
+              <div className="badge-unlock-label">Badge Unlocked!</div>
+              <div className="badge-unlock-name">{activeBadge.name}</div>
+              <div className="badge-unlock-desc">{activeBadge.description}</div>
+              <div className="badge-unlock-coins">+{activeBadge.coins} bonus coins</div>
+            </div>
+          </div>
+        )}
+
         <header className="header">
           <h1>📚 Maths Olympiad</h1>
           <div className="user-info">
@@ -760,6 +816,32 @@ export default function App() {
                   </div>
                 </div>
               )}
+
+              {/* Badge shelf */}
+              <div className="badge-shelf-card">
+                <h3>🏅 Badges — {earnedBadges.length} / {BADGES.length}</h3>
+                <div className="badge-shelf-grid">
+                  {BADGES.map(b => {
+                    const earned = earnedBadges.find(e => e.badge_id === b.id);
+                    return (
+                      <div
+                        key={b.id}
+                        className={`badge-shelf-item tier-${b.tier} ${earned ? 'earned' : 'locked'}`}
+                        title={b.description}
+                      >
+                        <div className="badge-shelf-icon">{b.icon}</div>
+                        <div className="badge-shelf-name">{b.name}</div>
+                        <div className="badge-shelf-desc">{b.description}</div>
+                        {earned && (
+                          <div className="badge-shelf-date">
+                            {new Date(earned.earned_at).toLocaleDateString()}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
 
               {/* 30-day score trend */}
               <div className="graph-card">

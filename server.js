@@ -4,6 +4,7 @@ const cors = require('cors');
 const { Pool } = require('pg');
 const multer = require('multer');
 const path = require('path');
+const { BADGES, BADGE_MAP, STREAK_THRESHOLDS, QUESTION_TIME_BY_LEVEL } = require('./badges');
 
 const app = express();
 app.use(cors());
@@ -131,6 +132,12 @@ async function initializeDB() {
       );
     `);
 
+    // Per-tier consecutive-correct-answer counters, used for streak badges.
+    // Each resets to 0 on a wrong/skipped answer at that tier.
+    await pool.query(`ALTER TABLE user_progress ADD COLUMN IF NOT EXISTS streak_easy INTEGER DEFAULT 0;`);
+    await pool.query(`ALTER TABLE user_progress ADD COLUMN IF NOT EXISTS streak_medium INTEGER DEFAULT 0;`);
+    await pool.query(`ALTER TABLE user_progress ADD COLUMN IF NOT EXISTS streak_hard INTEGER DEFAULT 0;`);
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS daily_history (
         id SERIAL PRIMARY KEY,
@@ -172,6 +179,21 @@ async function initializeDB() {
         time_taken INTEGER,
         coins_earned INTEGER DEFAULT 0,
         completed_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    // Difficulty tier ('easy' | 'medium' | 'hard') the paper was played at —
+    // needed to judge speed badges and to compare "same paper type" best times.
+    await pool.query(`ALTER TABLE paper_sessions ADD COLUMN IF NOT EXISTS level VARCHAR(20);`);
+
+    // Earned achievement badges. badge_id references the static catalog in
+    // badges.js rather than a DB table, since the catalog is fixed content.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS user_badges (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        badge_id VARCHAR(50) NOT NULL,
+        earned_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(user_id, badge_id)
       );
     `);
 
@@ -3147,6 +3169,36 @@ async function initializeDB() {
   }
 }
 
+// Records a badge as earned (no-op if already earned) and, the first time,
+// pays out its one-time coin bonus. Returns the badge catalog entry if this
+// call newly awarded it, or null if the user already had it.
+async function awardBadge(userId, badgeId) {
+  const badge = BADGE_MAP[badgeId];
+  if (!badge) return null;
+  const inserted = await pool.query(
+    `INSERT INTO user_badges (user_id, badge_id) VALUES ($1, $2)
+     ON CONFLICT (user_id, badge_id) DO NOTHING
+     RETURNING id`,
+    [userId, badgeId]
+  );
+  if (inserted.rows.length === 0) return null;
+  await pool.query(
+    `UPDATE user_progress SET total_coins = total_coins + $2, updated_at = NOW() WHERE user_id = $1`,
+    [userId, badge.coins]
+  );
+  return badge;
+}
+
+// Awards the combo badge once every one of its prerequisite badges has been earned.
+async function checkComboBadge(userId, comboId, prerequisiteIds) {
+  const earned = await pool.query(
+    `SELECT badge_id FROM user_badges WHERE user_id = $1 AND badge_id = ANY($2::text[])`,
+    [userId, prerequisiteIds]
+  );
+  if (earned.rows.length < prerequisiteIds.length) return null;
+  return awardBadge(userId, comboId);
+}
+
 // Authentication endpoints
 app.post('/api/auth/register', async (req, res) => {
   const { username, password, name, type } = req.body;
@@ -3253,16 +3305,51 @@ app.post('/api/progress/update', async (req, res) => {
     const newTotal = Math.max(0, currentTotal + nominalDelta);
     const actualDelta = newTotal - currentTotal;
 
+    // Per-tier consecutive-correct counter, used for streak badges. A wrong
+    // or skipped answer at a tier resets only that tier's streak.
+    const tier = ['easy', 'medium', 'hard'].includes(question_level) ? question_level : null;
+    const streakColumn = tier ? `streak_${tier}` : null;
+    const streakSql = streakColumn
+      ? `${streakColumn} = ${outcome === 'correct' ? `${streakColumn} + 1` : '0'},`
+      : '';
+    const overallStreakSql = outcome === 'correct'
+      ? `current_streak = current_streak + 1, max_streak = GREATEST(max_streak, current_streak + 1),`
+      : `current_streak = 0,`;
+
     const progress = await pool.query(
       `UPDATE user_progress
        SET questions_solved = questions_solved + 1,
            correct_answers = correct_answers + $2,
            total_coins = $3,
+           ${streakSql}
+           ${overallStreakSql}
            updated_at = NOW()
        WHERE user_id = $1
        RETURNING *`,
       [user_id, correctIncrement, newTotal]
     );
+
+    // Check streak-based badges against the fresh per-tier streak values.
+    const newBadges = [];
+    if (tier && STREAK_THRESHOLDS[tier]) {
+      const streakValue = progress.rows[0][`streak_${tier}`];
+      for (const [badgeId, threshold] of STREAK_THRESHOLDS[tier]) {
+        if (streakValue >= threshold) {
+          const awarded = await awardBadge(user_id, badgeId);
+          if (awarded) newBadges.push(awarded);
+        }
+      }
+      const combo = await checkComboBadge(user_id, 'awesome_combo', [
+        'quick_streak_easy', 'sharp_mind_medium', 'deep_focus_hard',
+      ]);
+      if (combo) newBadges.push(combo);
+    }
+    // Badge coin bonuses were applied after `newTotal` was computed, so
+    // reflect the final balance (including any bonuses) in the response.
+    if (newBadges.length > 0) {
+      const refreshed = await pool.query('SELECT total_coins FROM user_progress WHERE user_id = $1', [user_id]);
+      progress.rows[0].total_coins = refreshed.rows[0].total_coins;
+    }
 
     const today = new Date().toISOString().split('T')[0];
     await pool.query(
@@ -3279,7 +3366,7 @@ app.post('/api/progress/update', async (req, res) => {
       [user_id, difficulty || null, question_text || null, outcome || null, actualDelta]
     );
 
-    res.json({ ...progress.rows[0], coinsDelta: actualDelta });
+    res.json({ ...progress.rows[0], coinsDelta: actualDelta, newBadges });
   } catch (err) {
     console.error('Error updating progress:', err);
     res.status(400).json({ error: err.message });
@@ -3425,15 +3512,102 @@ app.get('/api/parent/children/:parent_id', async (req, res) => {
 });
 
 // Record a completed paper session
+// results (optional): per-question [{ correct, subject, skipped }], in the
+// order the paper was played — used to judge comeback/topic/give-up badges.
 app.post('/api/papers/complete', async (req, res) => {
-  const { user_id, difficulty, score, total_questions, time_taken, coins_earned } = req.body;
+  const { user_id, difficulty, level, score, total_questions, time_taken, coins_earned, results } = req.body;
+  const paperResults = Array.isArray(results) ? results : [];
+  try {
+    // Snapshot the previous best time for this exact paper type before
+    // inserting the new session, so "most improved" can compare against it.
+    let previousBest = null;
+    if (level) {
+      const prev = await pool.query(
+        `SELECT MIN(time_taken) AS best FROM paper_sessions
+         WHERE user_id = $1 AND difficulty = $2 AND level = $3 AND time_taken > 0`,
+        [user_id, difficulty, level]
+      );
+      previousBest = prev.rows[0]?.best ?? null;
+    }
+
+    const result = await pool.query(
+      `INSERT INTO paper_sessions (user_id, difficulty, level, score, total_questions, time_taken, coins_earned)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [user_id, difficulty, level || null, score, total_questions, time_taken, coins_earned]
+    );
+
+    const newBadges = [];
+    const award = async (badgeId) => {
+      const awarded = await awardBadge(user_id, badgeId);
+      if (awarded) newBadges.push(awarded);
+    };
+
+    if (total_questions > 0) {
+      await award('finisher');
+      if (score === total_questions) await award('clean_sweep');
+      else if (score >= total_questions - 2) await award('almost_perfect');
+    }
+
+    if (paperResults.length > 0) {
+      const wrongCount = paperResults.filter(r => !r.correct).length;
+      if (wrongCount >= 5) await award('no_give_up');
+
+      const lastWrongIndex = paperResults.reduce((last, r, i) => (!r.correct ? i : last), -1);
+      if (lastWrongIndex >= 0 && lastWrongIndex < paperResults.length - 1) await award('comeback_kid');
+
+      const bySubject = {};
+      for (const r of paperResults) {
+        if (!r.subject) continue;
+        (bySubject[r.subject] = bySubject[r.subject] || []).push(r.correct);
+      }
+      if (Object.values(bySubject).some(arr => arr.length >= 3 && arr.every(Boolean))) {
+        await award('topic_master');
+      }
+    }
+
+    // Speed badges — only meaningful when we know the tier played and got a
+    // real elapsed time.
+    if (level && QUESTION_TIME_BY_LEVEL[level] && time_taken > 0 && total_questions > 0) {
+      const accuracy = score / total_questions;
+      const targetTime = total_questions * QUESTION_TIME_BY_LEVEL[level] * 0.5;
+      if (accuracy >= 0.8 && time_taken <= targetTime) await award('speedster');
+      if (level === 'easy' && accuracy >= 0.8 && (time_taken / total_questions) < 20) await award('rocket_round');
+      if (previousBest !== null && time_taken < previousBest) await award('most_improved_pace');
+    }
+
+    // Consistency badges — count consecutive calendar days (ending today,
+    // since a session was just recorded) with at least one completed paper.
+    const dateRows = await pool.query(
+      `SELECT DISTINCT completed_at::date AS d FROM paper_sessions WHERE user_id = $1 ORDER BY d DESC`,
+      [user_id]
+    );
+    const dateStrs = dateRows.rows.map(r => new Date(r.d).toISOString().split('T')[0]);
+    let consistencyStreak = dateStrs.length > 0 ? 1 : 0;
+    for (let i = 1; i < dateStrs.length; i++) {
+      const prevDay = new Date(dateStrs[i - 1] + 'T00:00:00Z');
+      const curDay = new Date(dateStrs[i] + 'T00:00:00Z');
+      if (prevDay - curDay === 86400000) consistencyStreak++;
+      else break;
+    }
+    if (consistencyStreak >= 3) await award('consistency_3');
+    if (consistencyStreak >= 5) await award('consistency_5');
+    if (consistencyStreak >= 7) await award('consistency_7');
+
+    res.json({ ...result.rows[0], newBadges });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Earned badges for a user (for the badge shelf UI)
+app.get('/api/badges/:user_id', async (req, res) => {
+  const { user_id } = req.params;
   try {
     const result = await pool.query(
-      `INSERT INTO paper_sessions (user_id, difficulty, score, total_questions, time_taken, coins_earned)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [user_id, difficulty, score, total_questions, time_taken, coins_earned]
+      'SELECT badge_id, earned_at FROM user_badges WHERE user_id = $1 ORDER BY earned_at ASC',
+      [user_id]
     );
-    res.json(result.rows[0]);
+    res.json(result.rows);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

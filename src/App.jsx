@@ -3,6 +3,7 @@ import axios from 'axios';
 import './App.css';
 import { BADGES } from './badges';
 import { TOPICS, TOPIC_MAP, TOPIC_CATEGORIES } from './topics';
+import { FORMULAS } from './formulas';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 const PAPER_QUESTIONS = 15;
@@ -289,6 +290,18 @@ function TopicDetail({ topic, onBack, isFavorite, onToggleFavorite }) {
           <Diagram />
         </div>
       )}
+      {FORMULAS[topic.id] && (
+        <div className="formula-callout">
+          <h3>📐 Formula to Master</h3>
+          {FORMULAS[topic.id].map((f, i) => (
+            <div key={i} className="formula-callout-item">
+              <span className="formula-callout-name">{f.name}</span>
+              <span className="formula-callout-expression">{f.expression}</span>
+              {f.note && <span className="formula-callout-note">{f.note}</span>}
+            </div>
+          ))}
+        </div>
+      )}
       {topic.sections.map((s, i) => (
         <div key={i} className="topic-section">
           <h3>{s.heading}</h3>
@@ -323,6 +336,8 @@ export default function App() {
   const [learnTopic, setLearnTopic] = useState(null); // topic id | null (topic list)
   const [learnSearch, setLearnSearch] = useState('');
   const [learnCategoryFilter, setLearnCategoryFilter] = useState('All');
+  const [formulaSearch, setFormulaSearch] = useState('');
+  const [formulaCategoryFilter, setFormulaCategoryFilter] = useState('All');
   const [favoriteTopics, setFavoriteTopics] = useState([]); // topic ids
   const [topicMastery, setTopicMastery] = useState([]); // [{ topic_id, correct, target, mastered, viewed }]
   const [dailyActivity, setDailyActivity] = useState([]); // [{ date, papers_completed, total_correct, total_questions, coins_earned }]
@@ -1048,6 +1063,12 @@ export default function App() {
           >
             📘 Learn
           </button>
+          <button
+            className={page === 'formulas' ? 'active' : ''}
+            onClick={() => setPage('formulas')}
+          >
+            📐 Formulas
+          </button>
         </nav>
 
         <div className="content">
@@ -1457,6 +1478,77 @@ export default function App() {
                   })()}
                 </>
               )}
+            </div>
+          )}
+
+          {page === 'formulas' && (
+            <div className="learn-container">
+              <h2>📐 Formula Reference</h2>
+              <p className="learn-intro">The key formula to master for each topic — a quick lookup while you're learning or practising.</p>
+
+              <div className="learn-filters">
+                <input
+                  type="text"
+                  className="learn-search"
+                  placeholder="🔍 Search formulas…"
+                  value={formulaSearch}
+                  onChange={(e) => setFormulaSearch(e.target.value)}
+                />
+                <div className="learn-category-chips">
+                  {['All', ...TOPIC_CATEGORIES].map(cat => (
+                    <button
+                      key={cat}
+                      className={`learn-chip ${formulaCategoryFilter === cat ? 'active' : ''}`}
+                      onClick={() => setFormulaCategoryFilter(cat)}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {(() => {
+                const search = formulaSearch.trim().toLowerCase();
+                const matches = (t) => {
+                  if (formulaCategoryFilter !== 'All' && t.category !== formulaCategoryFilter) return false;
+                  if (!search) return true;
+                  if (t.title.toLowerCase().includes(search) || t.category.toLowerCase().includes(search)) return true;
+                  return (FORMULAS[t.id] || []).some(f =>
+                    f.name.toLowerCase().includes(search) || f.expression.toLowerCase().includes(search)
+                  );
+                };
+                const groups = TOPIC_CATEGORIES.map(cat => ({ cat, items: TOPICS.filter(t => t.category === cat && matches(t)) })).filter(g => g.items.length > 0);
+
+                if (groups.length === 0) {
+                  return <p className="graph-empty">No formulas match your search.</p>;
+                }
+
+                return groups.map(({ cat, items }) => (
+                  <div key={cat} className="topic-category-group">
+                    <h3>{cat}</h3>
+                    <div className="formula-grid">
+                      {items.map(t => (
+                        <div key={t.id} className="formula-card">
+                          <div className="formula-card-header">
+                            <span className="formula-card-icon">{t.icon}</span>
+                            <span className="formula-card-title">{t.title}</span>
+                          </div>
+                          {(FORMULAS[t.id] || []).map((f, i) => (
+                            <div key={i} className="formula-callout-item">
+                              <span className="formula-callout-name">{f.name}</span>
+                              <span className="formula-callout-expression">{f.expression}</span>
+                              {f.note && <span className="formula-callout-note">{f.note}</span>}
+                            </div>
+                          ))}
+                          <button className="formula-card-link" onClick={() => goToTopic(t.id)}>
+                            View full lesson →
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ));
+              })()}
             </div>
           )}
         </div>

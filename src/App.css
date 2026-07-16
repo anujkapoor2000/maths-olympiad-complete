@@ -2082,3 +2082,104 @@ button.mastery-card:hover {
   color: var(--amber-soft-text);
   font-weight: 600;
 }
+
+/* ---------------------------------------------------------------------- */
+/* Formula reference — Learn topic callout + standalone Formulas tab      */
+/* ---------------------------------------------------------------------- */
+
+.formula-callout {
+  background: var(--amber-soft);
+  border: 1.5px solid var(--amber);
+  border-radius: var(--radius-md);
+  padding: 1.1rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.formula-callout h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--amber-soft-text);
+  margin-bottom: 0.75rem;
+}
+
+.formula-callout-item {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0.75rem;
+}
+
+.formula-callout-item:last-child {
+  margin-bottom: 0;
+}
+
+.formula-callout-name {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--amber-soft-text);
+  opacity: 0.85;
+}
+
+.formula-callout-expression {
+  font-family: 'Courier New', monospace;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 0.2rem;
+}
+
+.formula-callout-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
+.formula-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.9rem;
+}
+
+.formula-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.1rem 1.25rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.formula-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+
+.formula-card-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.formula-card-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.formula-card-link {
+  display: inline-block;
+  margin-top: 0.4rem;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+}
+
+.formula-card-link:hover {
+  text-decoration: underline;
+}

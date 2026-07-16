@@ -177,7 +177,7 @@ const DIAGRAMS = {
   angles: AnglesDiagram,
 };
 
-function TopicDetail({ topic, onBack }) {
+function TopicDetail({ topic, onBack, isFavorite, onToggleFavorite }) {
   if (!topic) return null;
   const Diagram = DIAGRAMS[topic.diagram];
   return (
@@ -185,10 +185,17 @@ function TopicDetail({ topic, onBack }) {
       <button className="btn-back" onClick={onBack}>← Back to Learn</button>
       <div className="topic-detail-header">
         <span className="topic-detail-icon">{topic.icon}</span>
-        <div>
+        <div className="topic-detail-titlewrap">
           <h2>{topic.title}</h2>
           <p className="topic-detail-summary">{topic.summary}</p>
         </div>
+        <button
+          className={`topic-favorite-star large ${isFavorite ? 'active' : ''}`}
+          onClick={onToggleFavorite}
+          title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+        >
+          {isFavorite ? '⭐' : '☆'}
+        </button>
       </div>
       {Diagram && (
         <div className="topic-diagram-wrap">
@@ -224,8 +231,12 @@ function TopicDetail({ topic, onBack }) {
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
+  const [isOnline, setIsOnline] = useState(typeof navigator === 'undefined' ? true : navigator.onLine);
   const [page, setPage] = useState('login');
   const [learnTopic, setLearnTopic] = useState(null); // topic id | null (topic list)
+  const [learnSearch, setLearnSearch] = useState('');
+  const [learnCategoryFilter, setLearnCategoryFilter] = useState('All');
+  const [favoriteTopics, setFavoriteTopics] = useState([]); // topic ids
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [difficulty, setDifficulty] = useState('year6');
   const [level, setLevel] = useState('medium');
@@ -280,6 +291,21 @@ export default function App() {
     }).catch(() => {});
   }, []);
 
+  // Surface connectivity changes — the app shell and Learn tab keep working
+  // offline (service-worker cached), but questions/coins/badges need a
+  // network round-trip, so make dropped connectivity visible rather than
+  // let actions silently fail.
+  useEffect(() => {
+    const goOnline = () => setIsOnline(true);
+    const goOffline = () => setIsOnline(false);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => {
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
+    };
+  }, []);
+
   const flashCoinToast = (delta) => {
     if (coinToastTimeout.current) clearTimeout(coinToastTimeout.current);
     setCoinToast({ delta });
@@ -292,6 +318,29 @@ export default function App() {
       setEarnedBadges(r.data);
     } catch (err) {
       console.error('Error loading badges:', err);
+    }
+  };
+
+  const loadFavorites = async (userId) => {
+    try {
+      const r = await axios.get(`${API_URL}/api/favorites/${userId}`);
+      setFavoriteTopics(r.data);
+    } catch (err) {
+      console.error('Error loading favorite topics:', err);
+    }
+  };
+
+  const toggleFavorite = async (topicId) => {
+    if (!currentUser) return;
+    // Optimistic update — flip locally immediately, reconcile with the
+    // server's response (falls back to a reload of the list on error).
+    const wasFavorite = favoriteTopics.includes(topicId);
+    setFavoriteTopics(prev => wasFavorite ? prev.filter(id => id !== topicId) : [...prev, topicId]);
+    try {
+      await axios.post(`${API_URL}/api/favorites/toggle`, { user_id: currentUser.id, topic_id: topicId });
+    } catch (err) {
+      console.error('Error toggling favorite topic:', err);
+      loadFavorites(currentUser.id);
     }
   };
 
@@ -366,6 +415,7 @@ export default function App() {
       setLoginForm({ username: '', password: '' });
       if (response.data.type === 'child') {
         loadBadges(response.data.id);
+        loadFavorites(response.data.id);
       }
       if (response.data.type === 'parent') {
         const pid = response.data.id;
@@ -820,6 +870,11 @@ export default function App() {
 
     return (
       <div className="app">
+        {!isOnline && (
+          <div className="offline-banner">
+            ⚠️ You're offline — Learn is still readable, but new questions and saved progress need a connection.
+          </div>
+        )}
         {paperActive && currentQuestion && !answered && (
           <div className={`paper-timer${timerWarning ? ' warning' : ''}`}>
             <div className="paper-timer-label">Time Left</div>
@@ -1201,25 +1256,83 @@ export default function App() {
           {page === 'learn' && (
             <div className="learn-container">
               {learnTopic ? (
-                <TopicDetail topic={TOPIC_MAP[learnTopic]} onBack={() => setLearnTopic(null)} />
+                <TopicDetail
+                  topic={TOPIC_MAP[learnTopic]}
+                  onBack={() => setLearnTopic(null)}
+                  isFavorite={favoriteTopics.includes(learnTopic)}
+                  onToggleFavorite={() => toggleFavorite(learnTopic)}
+                />
               ) : (
                 <>
                   <h2>📘 Learn</h2>
                   <p className="learn-intro">Pick a topic to read a quick explanation with worked examples before you practise.</p>
-                  {TOPIC_CATEGORIES.map(cat => (
-                    <div key={cat} className="topic-category-group">
-                      <h3>{cat}</h3>
-                      <div className="topic-grid">
-                        {TOPICS.filter(t => t.category === cat).map(t => (
-                          <button key={t.id} className="topic-card" onClick={() => setLearnTopic(t.id)}>
-                            <div className="topic-card-icon">{t.icon}</div>
-                            <div className="topic-card-title">{t.title}</div>
-                            <div className="topic-card-summary">{t.summary}</div>
-                          </button>
-                        ))}
-                      </div>
+
+                  <div className="learn-filters">
+                    <input
+                      type="text"
+                      className="learn-search"
+                      placeholder="🔍 Search topics…"
+                      value={learnSearch}
+                      onChange={(e) => setLearnSearch(e.target.value)}
+                    />
+                    <div className="learn-category-chips">
+                      {['All', ...TOPIC_CATEGORIES].map(cat => (
+                        <button
+                          key={cat}
+                          className={`learn-chip ${learnCategoryFilter === cat ? 'active' : ''}`}
+                          onClick={() => setLearnCategoryFilter(cat)}
+                        >
+                          {cat}
+                        </button>
+                      ))}
                     </div>
-                  ))}
+                  </div>
+
+                  {(() => {
+                    const search = learnSearch.trim().toLowerCase();
+                    const matches = (t) =>
+                      (learnCategoryFilter === 'All' || t.category === learnCategoryFilter) &&
+                      (!search || t.title.toLowerCase().includes(search) || t.summary.toLowerCase().includes(search) || t.category.toLowerCase().includes(search));
+                    const favorites = TOPICS.filter(t => favoriteTopics.includes(t.id) && matches(t));
+                    const groups = TOPIC_CATEGORIES.map(cat => ({ cat, items: TOPICS.filter(t => t.category === cat && matches(t)) })).filter(g => g.items.length > 0);
+                    const nothingFound = favorites.length === 0 && groups.length === 0;
+
+                    const renderCard = (t) => (
+                      <button key={t.id} className="topic-card" onClick={() => setLearnTopic(t.id)}>
+                        <button
+                          className={`topic-favorite-star ${favoriteTopics.includes(t.id) ? 'active' : ''}`}
+                          onClick={(e) => { e.stopPropagation(); toggleFavorite(t.id); }}
+                          title={favoriteTopics.includes(t.id) ? 'Remove from favorites' : 'Add to favorites'}
+                        >
+                          {favoriteTopics.includes(t.id) ? '⭐' : '☆'}
+                        </button>
+                        <div className="topic-card-icon">{t.icon}</div>
+                        <div className="topic-card-title">{t.title}</div>
+                        <div className="topic-card-summary">{t.summary}</div>
+                      </button>
+                    );
+
+                    if (nothingFound) {
+                      return <p className="graph-empty">No topics match your search.</p>;
+                    }
+
+                    return (
+                      <>
+                        {favorites.length > 0 && (
+                          <div className="topic-category-group">
+                            <h3>⭐ Favorites</h3>
+                            <div className="topic-grid">{favorites.map(renderCard)}</div>
+                          </div>
+                        )}
+                        {groups.map(({ cat, items }) => (
+                          <div key={cat} className="topic-category-group">
+                            <h3>{cat}</h3>
+                            <div className="topic-grid">{items.map(renderCard)}</div>
+                          </div>
+                        ))}
+                      </>
+                    );
+                  })()}
                 </>
               )}
             </div>
@@ -1236,6 +1349,11 @@ export default function App() {
 
   return (
     <div className="app">
+      {!isOnline && (
+        <div className="offline-banner">
+          ⚠️ You're offline — showing the last data loaded. Reconnect to see up-to-date progress.
+        </div>
+      )}
       <header className="header">
         <h1>📚 Parent Dashboard</h1>
         <div className="user-info">

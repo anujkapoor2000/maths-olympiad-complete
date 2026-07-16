@@ -204,6 +204,18 @@ async function initializeDB() {
       );
     `);
 
+    // Bookmarked Learn topics (src/topics.js topic ids — no DB catalog, same
+    // reasoning as user_badges above).
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS user_favorite_topics (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        topic_id VARCHAR(50) NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(user_id, topic_id)
+      );
+    `);
+
     // Global coin economy settings — a single row (id = 1) configurable from
     // the parent view. 10 coins = 1p by default. Correct-answer rewards are
     // tiered by question difficulty (easy/medium/hard); wrong/skip penalties
@@ -4020,6 +4032,44 @@ app.get('/api/badges/:user_id', async (req, res) => {
       [user_id]
     );
     res.json(result.rows);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Bookmarked Learn topics for a user
+app.get('/api/favorites/:user_id', async (req, res) => {
+  const { user_id } = req.params;
+  try {
+    const result = await pool.query(
+      'SELECT topic_id FROM user_favorite_topics WHERE user_id = $1 ORDER BY created_at ASC',
+      [user_id]
+    );
+    res.json(result.rows.map(r => r.topic_id));
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Toggle a topic bookmark on/off, returning the new state.
+app.post('/api/favorites/toggle', async (req, res) => {
+  const { user_id, topic_id } = req.body;
+  if (!user_id || !topic_id) {
+    return res.status(400).json({ error: 'user_id and topic_id are required' });
+  }
+  try {
+    const deleted = await pool.query(
+      'DELETE FROM user_favorite_topics WHERE user_id = $1 AND topic_id = $2 RETURNING id',
+      [user_id, topic_id]
+    );
+    if (deleted.rows.length > 0) {
+      return res.json({ favorited: false });
+    }
+    await pool.query(
+      'INSERT INTO user_favorite_topics (user_id, topic_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [user_id, topic_id]
+    );
+    res.json({ favorited: true });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

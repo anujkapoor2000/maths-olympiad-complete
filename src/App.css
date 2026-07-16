@@ -1548,3 +1548,240 @@ button {
   margin-top: 0.4rem;
   font-weight: 600;
 }
+
+/* ---------------------------------------------------------------------- */
+/* Learn tab                                                              */
+/* ---------------------------------------------------------------------- */
+
+.learn-container h2 {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.4rem;
+}
+
+.learn-intro {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin-bottom: 1.75rem;
+}
+
+.topic-category-group {
+  margin-bottom: 2rem;
+}
+
+.topic-category-group h3 {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  margin-bottom: 0.75rem;
+}
+
+.topic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.9rem;
+}
+
+.topic-card {
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  font-family: inherit;
+}
+
+.topic-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--accent);
+}
+
+.topic-card-icon {
+  font-size: 28px;
+  margin-bottom: 0.5rem;
+}
+
+.topic-card-title {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text);
+  margin-bottom: 0.35rem;
+}
+
+.topic-card-summary {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* Topic detail page */
+.topic-detail {
+  max-width: 46rem;
+}
+
+.btn-back {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 1.25rem;
+}
+
+.topic-detail-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.topic-detail-icon {
+  font-size: 36px;
+  line-height: 1;
+}
+
+.topic-detail-header h2 {
+  margin-bottom: 0.15rem;
+}
+
+.topic-detail-summary {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.topic-diagram-wrap {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+.topic-diagram {
+  width: 100%;
+  max-width: 460px;
+  height: auto;
+}
+
+.diagram-chip {
+  fill: var(--accent-soft);
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.diagram-chip-next {
+  fill: var(--surface);
+  stroke-dasharray: 4 3;
+}
+
+.diagram-chip-text {
+  fill: var(--accent-soft-text);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.diagram-label {
+  fill: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.diagram-axis {
+  stroke: var(--text-faint);
+  stroke-width: 1.5;
+}
+
+.diagram-shape {
+  fill: var(--accent-soft);
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.diagram-shape-dim {
+  fill: var(--surface-alt);
+  opacity: 0.85;
+}
+
+.diagram-right-angle {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1.5;
+}
+
+.topic-section {
+  margin-bottom: 1.5rem;
+}
+
+.topic-section h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.4rem;
+}
+
+.topic-section p {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.example-box {
+  background: var(--accent-soft);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.1rem;
+  margin-top: 0.75rem;
+}
+
+.example-question {
+  font-size: 14px;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+}
+
+.example-working {
+  margin: 0 0 0.6rem 1.1rem;
+  padding: 0;
+  font-size: 13.5px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.example-answer {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--accent-soft-text);
+}
+
+.key-facts-box {
+  background: var(--green-soft);
+  border-radius: var(--radius-md);
+  padding: 1.1rem 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.key-facts-box h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--green-soft-text);
+  margin-bottom: 0.5rem;
+}
+
+.key-facts-box ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 13.5px;
+  color: var(--text);
+  line-height: 1.7;
+}

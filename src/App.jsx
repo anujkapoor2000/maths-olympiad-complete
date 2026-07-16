@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './App.css';
 import { BADGES } from './badges';
+import { TOPICS, TOPIC_MAP, TOPIC_CATEGORIES } from './topics';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 const PAPER_QUESTIONS = 15;
@@ -9,9 +10,183 @@ const PAPER_QUESTIONS = 15;
 const QUESTION_TIME_BY_LEVEL = { easy: 60, medium: 90, hard: 135 };
 const getQuestionTime = (lv) => QUESTION_TIME_BY_LEVEL[lv] || QUESTION_TIME_BY_LEVEL.medium;
 
+// Returns points for a regular polygon, for the 2D-shapes diagram.
+const polygonPoints = (cx, cy, r, sides, rotationDeg = -90) => {
+  const points = [];
+  for (let i = 0; i < sides; i++) {
+    const angle = (rotationDeg + (360 / sides) * i) * (Math.PI / 180);
+    points.push(`${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`);
+  }
+  return points.join(' ');
+};
+
+// Small illustrative SVG diagrams for the Learn tab — kept as plain,
+// stateless components since they take no props and never change.
+function SequenceDiagram() {
+  const terms = [3, 7, 11, 15];
+  return (
+    <svg viewBox="0 0 400 70" className="topic-diagram">
+      {terms.map((t, i) => (
+        <g key={i}>
+          <circle cx={30 + i * 80} cy={35} r="24" className="diagram-chip" />
+          <text x={30 + i * 80} y={41} textAnchor="middle" className="diagram-chip-text">{t}</text>
+          <text x={30 + i * 80 + 40} y={20} textAnchor="middle" className="diagram-label">+4</text>
+        </g>
+      ))}
+      <circle cx={30 + 4 * 80} cy={35} r="24" className="diagram-chip diagram-chip-next" />
+      <text x={30 + 4 * 80} y={41} textAnchor="middle" className="diagram-chip-text">?</text>
+    </svg>
+  );
+}
+
+function ProbabilityScaleDiagram() {
+  return (
+    <svg viewBox="0 0 360 60" className="topic-diagram">
+      <line x1="20" y1="35" x2="340" y2="35" className="diagram-axis" />
+      {[0, 0.25, 0.5, 0.75, 1].map((v, i) => {
+        const x = 20 + v * 320;
+        return (
+          <g key={i}>
+            <line x1={x} y1="28" x2={x} y2="42" className="diagram-axis" />
+            <text x={x} y="58" textAnchor="middle" className="diagram-label">{v}</text>
+          </g>
+        );
+      })}
+      <text x="20" y="16" textAnchor="start" className="diagram-label">Impossible</text>
+      <text x="180" y="16" textAnchor="middle" className="diagram-label">Even chance</text>
+      <text x="340" y="16" textAnchor="end" className="diagram-label">Certain</text>
+    </svg>
+  );
+}
+
+function Shapes2DDiagram() {
+  const shapes = [
+    { label: 'Triangle', sides: 3 },
+    { label: 'Square', sides: 4 },
+    { label: 'Pentagon', sides: 5 },
+    { label: 'Hexagon', sides: 6 },
+  ];
+  return (
+    <svg viewBox="0 0 570 130" className="topic-diagram">
+      {shapes.map((s, i) => (
+        <g key={s.label}>
+          <polygon points={polygonPoints(60 + i * 110, 50, 34, s.sides)} className="diagram-shape" />
+          <text x={60 + i * 110} y="105" textAnchor="middle" className="diagram-label">{s.label}</text>
+        </g>
+      ))}
+      <circle cx={60 + 4 * 110} cy={50} r="34" className="diagram-shape" />
+      <text x={60 + 4 * 110} y="105" textAnchor="middle" className="diagram-label">Circle</text>
+    </svg>
+  );
+}
+
+function Shapes3DDiagram() {
+  return (
+    <svg viewBox="0 0 460 130" className="topic-diagram">
+      {/* Cube */}
+      <g>
+        <polygon points="30,80 70,80 70,40 30,40" className="diagram-shape" />
+        <polygon points="45,60 85,60 85,25 45,25" className="diagram-shape diagram-shape-dim" />
+        <line x1="30" y1="80" x2="45" y2="60" className="diagram-axis" />
+        <line x1="70" y1="80" x2="85" y2="60" className="diagram-axis" />
+        <line x1="70" y1="40" x2="85" y2="25" className="diagram-axis" />
+        <line x1="30" y1="40" x2="45" y2="25" className="diagram-axis" />
+        <text x="55" y="105" textAnchor="middle" className="diagram-label">Cube</text>
+      </g>
+      {/* Cylinder */}
+      <g transform="translate(115,0)">
+        <ellipse cx="55" cy="30" rx="30" ry="10" className="diagram-shape" />
+        <line x1="25" y1="30" x2="25" y2="65" className="diagram-axis" />
+        <line x1="85" y1="30" x2="85" y2="65" className="diagram-axis" />
+        <path d="M25,65 A30,10 0 0 0 85,65" className="diagram-shape" fill="none" />
+        <text x="55" y="105" textAnchor="middle" className="diagram-label">Cylinder</text>
+      </g>
+      {/* Sphere */}
+      <g transform="translate(230,0)">
+        <circle cx="55" cy="45" r="30" className="diagram-shape" />
+        <ellipse cx="55" cy="45" rx="30" ry="10" className="diagram-shape" fill="none" />
+        <text x="55" y="105" textAnchor="middle" className="diagram-label">Sphere</text>
+      </g>
+      {/* Cone */}
+      <g transform="translate(345,0)">
+        <ellipse cx="55" cy="65" rx="30" ry="10" className="diagram-shape" />
+        <polygon points="25,65 85,65 55,15" className="diagram-shape" />
+        <text x="55" y="105" textAnchor="middle" className="diagram-label">Cone</text>
+      </g>
+    </svg>
+  );
+}
+
+function PythagorasDiagram() {
+  const x0 = 40, y0 = 140, x1 = 220, y1 = 140, x2 = 40, y2 = 30;
+  return (
+    <svg viewBox="0 0 260 160" className="topic-diagram">
+      <polygon points={`${x0},${y0} ${x1},${y1} ${x2},${y2}`} className="diagram-shape" />
+      <rect x={x0} y={y0 - 16} width="16" height="16" className="diagram-right-angle" />
+      <text x={(x0 + x1) / 2} y={y0 + 22} textAnchor="middle" className="diagram-label">b</text>
+      <text x={x0 - 14} y={(y0 + y2) / 2} textAnchor="middle" className="diagram-label">a</text>
+      <text x={(x1 + x2) / 2 + 12} y={(y1 + y2) / 2 - 4} textAnchor="middle" className="diagram-label">c</text>
+    </svg>
+  );
+}
+
+const DIAGRAMS = {
+  sequence: SequenceDiagram,
+  'probability-scale': ProbabilityScaleDiagram,
+  'shapes-2d': Shapes2DDiagram,
+  'shapes-3d': Shapes3DDiagram,
+  pythagoras: PythagorasDiagram,
+};
+
+function TopicDetail({ topic, onBack }) {
+  if (!topic) return null;
+  const Diagram = DIAGRAMS[topic.diagram];
+  return (
+    <div className="topic-detail">
+      <button className="btn-back" onClick={onBack}>← Back to Learn</button>
+      <div className="topic-detail-header">
+        <span className="topic-detail-icon">{topic.icon}</span>
+        <div>
+          <h2>{topic.title}</h2>
+          <p className="topic-detail-summary">{topic.summary}</p>
+        </div>
+      </div>
+      {Diagram && (
+        <div className="topic-diagram-wrap">
+          <Diagram />
+        </div>
+      )}
+      {topic.sections.map((s, i) => (
+        <div key={i} className="topic-section">
+          <h3>{s.heading}</h3>
+          <p>{s.body}</p>
+          {s.example && (
+            <div className="example-box">
+              <div className="example-question"><strong>Example:</strong> {s.example.question}</div>
+              <ul className="example-working">
+                {s.example.working.map((line, j) => <li key={j}>{line}</li>)}
+              </ul>
+              <div className="example-answer">Answer: {s.example.answer}</div>
+            </div>
+          )}
+        </div>
+      ))}
+      {topic.keyFacts && topic.keyFacts.length > 0 && (
+        <div className="key-facts-box">
+          <h3>🔑 Key Facts</h3>
+          <ul>
+            {topic.keyFacts.map((f, i) => <li key={i}>{f}</li>)}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [page, setPage] = useState('login');
+  const [learnTopic, setLearnTopic] = useState(null); // topic id | null (topic list)
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [difficulty, setDifficulty] = useState('year6');
   const [level, setLevel] = useState('medium');
@@ -633,6 +808,12 @@ export default function App() {
           >
             📊 Progress
           </button>
+          <button
+            className={page === 'learn' ? 'active' : ''}
+            onClick={() => setPage('learn')}
+          >
+            📘 Learn
+          </button>
         </nav>
 
         <div className="content">
@@ -936,6 +1117,33 @@ export default function App() {
                   </table>
                 )}
               </div>
+            </div>
+          )}
+
+          {page === 'learn' && (
+            <div className="learn-container">
+              {learnTopic ? (
+                <TopicDetail topic={TOPIC_MAP[learnTopic]} onBack={() => setLearnTopic(null)} />
+              ) : (
+                <>
+                  <h2>📘 Learn</h2>
+                  <p className="learn-intro">Pick a topic to read a quick explanation with worked examples before you practise.</p>
+                  {TOPIC_CATEGORIES.map(cat => (
+                    <div key={cat} className="topic-category-group">
+                      <h3>{cat}</h3>
+                      <div className="topic-grid">
+                        {TOPICS.filter(t => t.category === cat).map(t => (
+                          <button key={t.id} className="topic-card" onClick={() => setLearnTopic(t.id)}>
+                            <div className="topic-card-icon">{t.icon}</div>
+                            <div className="topic-card-title">{t.title}</div>
+                            <div className="topic-card-summary">{t.summary}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           )}
         </div>

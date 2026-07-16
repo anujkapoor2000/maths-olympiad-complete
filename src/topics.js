@@ -392,6 +392,54 @@ export const TOPICS = [
     ],
   },
 
+  {
+    id: 'unit-conversion',
+    title: 'Unit Conversion',
+    icon: '📏',
+    category: 'Number',
+    summary: 'Converting between metric units of length, mass, capacity and time.',
+    sections: [
+      {
+        heading: 'Metric length, mass and capacity',
+        body: "The metric system is based on powers of 10. Length: 10mm = 1cm, 100cm = 1m, 1000m = 1km. Mass: 1000g = 1kg, 1000kg = 1 tonne. Capacity: 1000ml = 1 litre. To convert to a smaller unit, multiply; to a larger unit, divide.",
+        example: {
+          question: 'Convert 3.5km to metres, and 2400g to kilograms.',
+          working: [
+            '3.5km to m: multiply by 1000 (m is smaller): 3.5 × 1000 = 3500m.',
+            '2400g to kg: divide by 1000 (kg is larger): 2400 ÷ 1000 = 2.4kg.',
+          ],
+          answer: '3500m and 2.4kg',
+        },
+      },
+      {
+        heading: 'Time',
+        body: "Time doesn't use powers of 10: 60 seconds = 1 minute, 60 minutes = 1 hour, 24 hours = 1 day. The 24-hour clock avoids am/pm confusion — add 12 to any pm hour after 12 noon (e.g. 3:15pm = 15:15).",
+        example: {
+          question: 'How many minutes are there in 2.5 hours?',
+          working: ['2.5 × 60 = 150 minutes.'],
+          answer: '150 minutes',
+        },
+      },
+      {
+        heading: 'Converting compound units',
+        body: "Some units combine two measures, like speed (distance ÷ time). To change the units of a compound measure, convert each part separately.",
+        example: {
+          question: 'A car travels at 20 metres per second. What is this in km per hour?',
+          working: [
+            'Per second → per hour: multiply by 3600 (seconds in an hour): 20 × 3600 = 72000 metres per hour.',
+            'Metres → km: divide by 1000: 72000 ÷ 1000 = 72km/h.',
+          ],
+          answer: '72km/h',
+        },
+      },
+    ],
+    keyFacts: [
+      'Length: 10mm=1cm, 100cm=1m, 1000m=1km. Mass: 1000g=1kg. Capacity: 1000ml=1 litre.',
+      'Converting to a smaller unit: multiply. Converting to a larger unit: divide.',
+      'Time: 60 seconds=1 minute, 60 minutes=1 hour, 24 hours=1 day.',
+    ],
+  },
+
   // =========================================================================
   // ALGEBRA
   // =========================================================================
@@ -918,11 +966,23 @@ export const TOPICS = [
           answer: '60cm³',
         },
       },
+      {
+        heading: 'Volume of a sphere and cone',
+        body: "Volume of a sphere = (4/3) × π × radius³. Volume of a cone = (1/3) × π × radius² × height — exactly a third of a cylinder with the same base and height.",
+        example: {
+          question: 'Find the volume of a sphere with radius 6cm, in terms of π.',
+          working: [
+            'Volume = (4/3) × π × r³.',
+            '(4/3) × π × 6³ = (4/3) × π × 216 = 288π cm³.',
+          ],
+          answer: '288π cm³',
+        },
+      },
     ],
     keyFacts: [
       "Euler's formula: Faces + Vertices − Edges = 2 (for solids with flat faces).",
       'A sphere has no edges and no vertices — just one curved surface.',
-      'Volume of a cuboid = length × width × height.',
+      'Volume of a cuboid = length × width × height. Cone = a third of the matching cylinder.',
     ],
   },
 
@@ -963,11 +1023,24 @@ export const TOPICS = [
           answer: '15m',
         },
       },
+      {
+        heading: 'The distance between two points',
+        body: "Pythagoras' theorem also finds the distance between two coordinates. Treat the horizontal and vertical gaps between the points as the two shorter sides of a right-angled triangle, then find the hypotenuse: distance = √((x₂−x₁)² + (y₂−y₁)²).",
+        example: {
+          question: 'Find the distance between (1, 2) and (4, 6).',
+          working: [
+            'Horizontal gap: 4 − 1 = 3. Vertical gap: 6 − 2 = 4.',
+            'distance = √(3² + 4²) = √(9 + 16) = √25 = 5.',
+          ],
+          answer: '5',
+        },
+      },
     ],
     keyFacts: [
       'a² + b² = c² — only true for right-angled triangles.',
       'c is always the hypotenuse: the longest side, opposite the right angle.',
       'Finding the hypotenuse: add the squares. Finding a shorter side: subtract.',
+      'Distance between two points: treat the coordinate gaps as the two shorter sides and find the hypotenuse.',
     ],
   },
 
@@ -1076,11 +1149,34 @@ export const TOPICS = [
           answer: '60°',
         },
       },
+      {
+        heading: 'Angles and parallel lines',
+        body: "When a line (a transversal) crosses two parallel lines, it creates equal or supplementary angles in matching positions. Alternate angles (opposite sides of the transversal, between the parallel lines) are equal — they form a 'Z' shape. Corresponding angles (same position at each crossing) are equal — they form an 'F' shape. Co-interior angles (same side, between the parallel lines) add up to 180° — they form a 'C' shape.",
+        example: {
+          question: 'Two parallel lines are crossed by a transversal. One angle is 65°. Find the alternate angle, and the co-interior angle on the same side as it.',
+          working: [
+            'Alternate angles are equal: alternate angle = 65°.',
+            'Co-interior angles sum to 180°: co-interior angle = 180 − 65 = 115°.',
+          ],
+          answer: 'Alternate = 65°, co-interior = 115°',
+        },
+      },
+      {
+        heading: 'Exterior angles of a polygon',
+        body: "The exterior angles of any polygon always add up to 360°, no matter how many sides it has. For a regular polygon, each exterior angle is 360° ÷ n.",
+        example: {
+          question: 'Find the exterior angle of a regular polygon with 9 sides.',
+          working: ['Exterior angle = 360° ÷ n = 360° ÷ 9 = 40°.'],
+          answer: '40°',
+        },
+      },
     ],
     keyFacts: [
       'Angles on a straight line: sum to 180°.',
       'Angles around a point: sum to 360°.',
       'Angles in a triangle: sum to 180°. Vertically opposite angles are equal.',
+      "Parallel lines: alternate angles are equal ('Z'), corresponding angles are equal ('F'), co-interior angles sum to 180° ('C').",
+      'Exterior angles of any polygon sum to 360°; for a regular polygon, each one is 360° ÷ n.',
     ],
   },
 

@@ -1963,3 +1963,122 @@ button {
   color: var(--text);
   line-height: 1.7;
 }
+
+/* ---------------------------------------------------------------------- */
+/* Topic mastery dashboard (child Progress page + parent per-child view)  */
+/* ---------------------------------------------------------------------- */
+
+.mastery-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 1.5rem;
+}
+
+.mastery-section > h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 1.25rem;
+  color: var(--text);
+}
+
+.mastery-category-group {
+  margin-bottom: 1.25rem;
+}
+
+.mastery-category-group:last-child {
+  margin-bottom: 0;
+}
+
+.mastery-category-group h4 {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+  margin-bottom: 0.6rem;
+}
+
+.mastery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 0.6rem;
+}
+
+.mastery-card {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-align: left;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.65rem 0.75rem;
+  background: var(--surface-alt);
+  font-family: inherit;
+  width: 100%;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+button.mastery-card {
+  cursor: pointer;
+}
+
+button.mastery-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.mastery-card.not-started {
+  opacity: 0.6;
+}
+
+.mastery-card.read {
+  border-color: var(--accent);
+}
+
+.mastery-card.learning {
+  border-color: var(--amber);
+  background: var(--amber-soft);
+}
+
+.mastery-card.mastered {
+  border-color: var(--green);
+  background: var(--green-soft);
+}
+
+.mastery-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.mastery-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.mastery-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mastery-status {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.mastery-card.mastered .mastery-status {
+  color: var(--green-soft-text);
+  font-weight: 600;
+}
+
+.mastery-card.learning .mastery-status {
+  color: var(--amber-soft-text);
+  font-weight: 600;
+}

@@ -216,6 +216,34 @@ async function initializeDB() {
       );
     `);
 
+    // Records the first time a user answers a given question correctly.
+    // Topic mastery is computed from this: a topic is "mastered" once a
+    // child has correctly answered min(6, questions available) distinct
+    // questions tagged with that topic — the "6 questions" cap adapts down
+    // for topics with fewer than 6 questions in the bank.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS user_question_mastery (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        question_id INTEGER REFERENCES questions(id),
+        topic_id VARCHAR(50) NOT NULL,
+        correct_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(user_id, question_id)
+      );
+    `);
+
+    // Tracks which Learn topics a child has opened (read), independent of
+    // whether they've since mastered it by answering questions.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS user_topic_views (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        topic_id VARCHAR(50) NOT NULL,
+        viewed_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(user_id, topic_id)
+      );
+    `);
+
     // Global coin economy settings — a single row (id = 1) configurable from
     // the parent view. 10 coins = 1p by default. Correct-answer rewards are
     // tiered by question difficulty (easy/medium/hard); wrong/skip penalties
@@ -3594,6 +3622,16 @@ async function awardBadge(userId, badgeId) {
     `UPDATE user_progress SET total_coins = total_coins + $2, updated_at = NOW() WHERE user_id = $1`,
     [userId, badge.coins]
   );
+  // Log the bonus into today's daily history too, so per-day coin totals
+  // (used by the daily activity dashboard) include badge bonuses, not just
+  // per-answer rewards.
+  const today = new Date().toISOString().split('T')[0];
+  await pool.query(
+    `INSERT INTO daily_history (user_id, date, problems_solved, coins_earned)
+     VALUES ($1, $2, 0, $3)
+     ON CONFLICT (user_id, date) DO UPDATE SET coins_earned = daily_history.coins_earned + $3`,
+    [userId, today, badge.coins]
+  );
   return badge;
 }
 
@@ -3707,7 +3745,7 @@ app.get('/api/questions/:difficulty', async (req, res) => {
 // (question_level: 'easy' | 'medium' | 'hard'), defaulting to the medium
 // rate for untagged (legacy) questions.
 app.post('/api/progress/update', async (req, res) => {
-  const { user_id, outcome, difficulty, question_text, question_level } = req.body;
+  const { user_id, outcome, difficulty, question_text, question_level, question_id } = req.body;
   try {
     const settingsResult = await pool.query('SELECT * FROM coin_settings WHERE id = 1');
     const settings = settingsResult.rows[0];
@@ -3789,6 +3827,20 @@ app.post('/api/progress/update', async (req, res) => {
        VALUES ($1, $2, $3, $4, $5)`,
       [user_id, difficulty || null, question_text || null, outcome || null, actualDelta]
     );
+
+    // Topic mastery: log the first time this exact question is answered
+    // correctly (ON CONFLICT DO NOTHING keeps only the first occurrence).
+    if (outcome === 'correct' && question_id) {
+      const q = await pool.query('SELECT topic_id FROM questions WHERE id = $1', [question_id]);
+      const topicId = q.rows[0]?.topic_id;
+      if (topicId) {
+        await pool.query(
+          `INSERT INTO user_question_mastery (user_id, question_id, topic_id)
+           VALUES ($1, $2, $3) ON CONFLICT (user_id, question_id) DO NOTHING`,
+          [user_id, question_id, topicId]
+        );
+      }
+    }
 
     res.json({ ...progress.rows[0], coinsDelta: actualDelta, newBadges });
   } catch (err) {
@@ -3926,7 +3978,9 @@ app.get('/api/parent/children/:parent_id', async (req, res) => {
         `SELECT * FROM answer_log WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20`,
         [child.id]
       );
-      return { ...child, progress: progress.rows[0] || null, sessions: sessions.rows, answerLog: answerLog.rows };
+      const mastery = await getTopicMastery(child.id);
+      const dailyActivity = await getDailyActivity(child.id, 30);
+      return { ...child, progress: progress.rows[0] || null, sessions: sessions.rows, answerLog: answerLog.rows, mastery, dailyActivity };
     }));
 
     res.json(result);
@@ -4070,6 +4124,112 @@ app.post('/api/favorites/toggle', async (req, res) => {
       [user_id, topic_id]
     );
     res.json({ favorited: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Marks a Learn topic as viewed ("read") by a child. Idempotent.
+app.post('/api/topics/view', async (req, res) => {
+  const { user_id, topic_id } = req.body;
+  if (!user_id || !topic_id) {
+    return res.status(400).json({ error: 'user_id and topic_id are required' });
+  }
+  try {
+    await pool.query(
+      'INSERT INTO user_topic_views (user_id, topic_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [user_id, topic_id]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Per-topic mastery: for every topic with at least one linked question, how
+// many of that topic's questions (capped at 6) has this user answered
+// correctly, and have they opened the lesson.
+// mastered = correct >= min(6, total available for that topic).
+async function getTopicMastery(userId) {
+  const totals = await pool.query(
+    `SELECT topic_id, COUNT(*) AS total FROM questions WHERE topic_id IS NOT NULL GROUP BY topic_id`
+  );
+  const correct = await pool.query(
+    `SELECT topic_id, COUNT(DISTINCT question_id) AS correct FROM user_question_mastery WHERE user_id = $1 GROUP BY topic_id`,
+    [userId]
+  );
+  const views = await pool.query(
+    `SELECT topic_id FROM user_topic_views WHERE user_id = $1`,
+    [userId]
+  );
+  const correctByTopic = Object.fromEntries(correct.rows.map(r => [r.topic_id, parseInt(r.correct, 10)]));
+  const viewedTopics = new Set(views.rows.map(r => r.topic_id));
+  return totals.rows.map(r => {
+    const total = parseInt(r.total, 10);
+    const target = Math.min(6, total);
+    const correctCount = correctByTopic[r.topic_id] || 0;
+    return {
+      topic_id: r.topic_id,
+      correct: correctCount,
+      target,
+      mastered: target > 0 && correctCount >= target,
+      viewed: viewedTopics.has(r.topic_id),
+    };
+  });
+}
+
+// Daily activity: papers completed, score, and coins earned per day, for
+// the last `days` days.
+async function getDailyActivity(userId, days = 30) {
+  const papers = await pool.query(
+    `SELECT DATE(completed_at) AS date, COUNT(*) AS papers_completed,
+            SUM(score) AS total_correct, SUM(total_questions) AS total_questions
+     FROM paper_sessions
+     WHERE user_id = $1 AND completed_at >= NOW() - ($2 || ' days')::interval
+     GROUP BY DATE(completed_at)`,
+    [userId, days]
+  );
+  const history = await pool.query(
+    `SELECT date, problems_solved, coins_earned
+     FROM daily_history
+     WHERE user_id = $1 AND date >= (NOW() - ($2 || ' days')::interval)::date`,
+    [userId, days]
+  );
+  const byDate = {};
+  const dateKey = (d) => new Date(d).toISOString().split('T')[0];
+  for (const row of papers.rows) {
+    byDate[dateKey(row.date)] = {
+      date: dateKey(row.date),
+      papers_completed: parseInt(row.papers_completed, 10),
+      total_correct: parseInt(row.total_correct, 10) || 0,
+      total_questions: parseInt(row.total_questions, 10) || 0,
+      problems_solved: 0,
+      coins_earned: 0,
+    };
+  }
+  for (const row of history.rows) {
+    const key = dateKey(row.date);
+    if (!byDate[key]) {
+      byDate[key] = { date: key, papers_completed: 0, total_correct: 0, total_questions: 0, problems_solved: 0, coins_earned: 0 };
+    }
+    byDate[key].problems_solved = row.problems_solved;
+    byDate[key].coins_earned = row.coins_earned;
+  }
+  return Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+app.get('/api/topics/mastery/:user_id', async (req, res) => {
+  try {
+    res.json(await getTopicMastery(req.params.user_id));
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.get('/api/daily-activity/:user_id', async (req, res) => {
+  const days = Math.min(90, Math.max(1, parseInt(req.query.days, 10) || 30));
+  try {
+    res.json(await getDailyActivity(req.params.user_id, days));
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

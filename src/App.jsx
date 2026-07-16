@@ -177,6 +177,93 @@ const DIAGRAMS = {
   angles: AnglesDiagram,
 };
 
+// Topic mastery grid — shown on both the child's own Progress page and the
+// parent's per-child dashboard. A topic is "mastered" once the child has
+// correctly answered target (= min(6, questions available)) distinct
+// questions tagged with that topic; "viewed" means they've opened the lesson.
+function TopicMasteryGrid({ mastery, onOpenTopic }) {
+  const byId = Object.fromEntries((mastery || []).map(m => [m.topic_id, m]));
+  const masteredCount = (mastery || []).filter(m => m.mastered).length;
+  return (
+    <div className="mastery-section">
+      <h3>🏅 Topic Mastery — {masteredCount} / {TOPICS.length} mastered</h3>
+      {TOPIC_CATEGORIES.map(cat => (
+        <div key={cat} className="mastery-category-group">
+          <h4>{cat}</h4>
+          <div className="mastery-grid">
+            {TOPICS.filter(t => t.category === cat).map(t => {
+              const m = byId[t.id];
+              const correct = m?.correct || 0;
+              const target = m?.target ?? 0;
+              const mastered = m?.mastered || false;
+              const viewed = m?.viewed || false;
+              const status = mastered ? 'mastered' : correct > 0 ? 'learning' : viewed ? 'read' : 'not-started';
+              const label = mastered ? '⭐ Mastered' : correct > 0 ? `${correct}/${target} correct` : viewed ? '📖 Read' : 'Not started yet';
+              const Tag = onOpenTopic ? 'button' : 'div';
+              return (
+                <Tag
+                  key={t.id}
+                  className={`mastery-card ${status}`}
+                  onClick={onOpenTopic ? () => onOpenTopic(t.id) : undefined}
+                >
+                  <span className="mastery-icon">{t.icon}</span>
+                  <div className="mastery-info">
+                    <span className="mastery-title">{t.title}</span>
+                    <span className="mastery-status">{label}</span>
+                  </div>
+                </Tag>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Daily activity table — papers completed, score and coins earned per day.
+function DailyActivityTable({ activity }) {
+  const days = [...(activity || [])].sort((a, b) => b.date.localeCompare(a.date));
+  return (
+    <div className="sessions-card">
+      <h3>Daily Activity</h3>
+      {days.length === 0 ? (
+        <p className="graph-empty">No papers completed yet.</p>
+      ) : (
+        <table className="sessions-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Papers Completed</th>
+              <th>Score</th>
+              <th>Coins Earned</th>
+            </tr>
+          </thead>
+          <tbody>
+            {days.map(d => {
+              const pct = d.total_questions > 0 ? Math.round((d.total_correct / d.total_questions) * 100) : null;
+              return (
+                <tr key={d.date}>
+                  <td>{new Date(d.date).toLocaleDateString()}</td>
+                  <td>{d.papers_completed}</td>
+                  <td>
+                    {pct === null ? '—' : (
+                      <span className={`score-pill ${pct >= 80 ? 'green' : pct >= 50 ? 'amber' : 'red'}`}>
+                        {d.total_correct}/{d.total_questions} ({pct}%)
+                      </span>
+                    )}
+                  </td>
+                  <td>💰 {d.coins_earned}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 function TopicDetail({ topic, onBack, isFavorite, onToggleFavorite }) {
   if (!topic) return null;
   const Diagram = DIAGRAMS[topic.diagram];
@@ -237,6 +324,8 @@ export default function App() {
   const [learnSearch, setLearnSearch] = useState('');
   const [learnCategoryFilter, setLearnCategoryFilter] = useState('All');
   const [favoriteTopics, setFavoriteTopics] = useState([]); // topic ids
+  const [topicMastery, setTopicMastery] = useState([]); // [{ topic_id, correct, target, mastered, viewed }]
+  const [dailyActivity, setDailyActivity] = useState([]); // [{ date, papers_completed, total_correct, total_questions, coins_earned }]
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [difficulty, setDifficulty] = useState('year6');
   const [level, setLevel] = useState('medium');
@@ -344,6 +433,28 @@ export default function App() {
     }
   };
 
+  const markTopicViewed = (userId, topicId) => {
+    axios.post(`${API_URL}/api/topics/view`, { user_id: userId, topic_id: topicId }).catch(() => {});
+  };
+
+  const loadTopicMastery = async (userId) => {
+    try {
+      const r = await axios.get(`${API_URL}/api/topics/mastery/${userId}`);
+      setTopicMastery(r.data);
+    } catch (err) {
+      console.error('Error loading topic mastery:', err);
+    }
+  };
+
+  const loadDailyActivity = async (userId) => {
+    try {
+      const r = await axios.get(`${API_URL}/api/daily-activity/${userId}`);
+      setDailyActivity(r.data);
+    } catch (err) {
+      console.error('Error loading daily activity:', err);
+    }
+  };
+
   const queueNewBadges = (badges) => {
     if (!badges || badges.length === 0) return;
     setBadgeQueue(prev => [...prev, ...badges]);
@@ -440,7 +551,8 @@ export default function App() {
         outcome: correct ? 'correct' : 'incorrect',
         difficulty,
         question_text: currentQuestion.text,
-        question_level: currentQuestion.level
+        question_level: currentQuestion.level,
+        question_id: currentQuestion.id
       });
       const coinsDelta = response.data.coinsDelta ?? 0;
       setResult({ correct, expected: currentQuestion.answer, coinsDelta });
@@ -553,6 +665,8 @@ export default function App() {
         setSessions(r.data.sessions || []);
       }).catch(() => {});
       loadBadges(currentUser.id);
+      loadTopicMastery(currentUser.id);
+      loadDailyActivity(currentUser.id);
     }
   }, [page]);
 
@@ -805,8 +919,13 @@ export default function App() {
       .map(([topicId, data]) => ({ topicId, ...data, topic: TOPIC_MAP[topicId] }));
   };
 
-  const goToTopic = (topicId) => {
+  const openTopic = (topicId) => {
     setLearnTopic(topicId);
+    if (currentUser) markTopicViewed(currentUser.id, topicId);
+  };
+
+  const goToTopic = (topicId) => {
+    openTopic(topicId);
     setPage('learn');
   };
 
@@ -1165,6 +1284,9 @@ export default function App() {
                 </div>
               </div>
 
+              <TopicMasteryGrid mastery={topicMastery} onOpenTopic={goToTopic} />
+              <DailyActivityTable activity={dailyActivity} />
+
               {/* 30-day score trend */}
               <div className="graph-card">
                 <h3>Score Trend — Last 30 Days</h3>
@@ -1298,7 +1420,7 @@ export default function App() {
                     const nothingFound = favorites.length === 0 && groups.length === 0;
 
                     const renderCard = (t) => (
-                      <button key={t.id} className="topic-card" onClick={() => setLearnTopic(t.id)}>
+                      <button key={t.id} className="topic-card" onClick={() => openTopic(t.id)}>
                         <button
                           className={`topic-favorite-star ${favoriteTopics.includes(t.id) ? 'active' : ''}`}
                           onClick={(e) => { e.stopPropagation(); toggleFavorite(t.id); }}
@@ -1518,6 +1640,9 @@ export default function App() {
                   ) : (
                     <p className="graph-empty">No progress recorded yet.</p>
                   )}
+
+                  <TopicMasteryGrid mastery={child.mastery} />
+                  <DailyActivityTable activity={child.dailyActivity} />
 
                   <div className="sessions-card">
                     <h3>Recent Papers</h3>

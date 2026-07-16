@@ -395,7 +395,7 @@ export default function App() {
       const coinsDelta = response.data.coinsDelta ?? 0;
       setResult({ correct, expected: currentQuestion.answer, coinsDelta });
       setAnswered(true);
-      setPaperResults(prev => [...prev, { correct, subject: currentQuestion.subject, coinsDelta }]);
+      setPaperResults(prev => [...prev, { correct, subject: currentQuestion.subject, topicId: currentQuestion.topic_id, coinsDelta }]);
       flashCoinToast(coinsDelta);
       queueNewBadges(response.data.newBadges);
       const progressResponse = await axios.get(`${API_URL}/api/progress/${currentUser.id}`);
@@ -465,7 +465,7 @@ export default function App() {
     } catch (err) {
       console.error('Error recording skipped question:', err);
     }
-    const newResults = [...paperResults, { correct: false, subject: currentQuestion.subject, skipped: true, coinsDelta }];
+    const newResults = [...paperResults, { correct: false, subject: currentQuestion.subject, topicId: currentQuestion.topic_id, skipped: true, coinsDelta }];
     setPaperResults(newResults);
 
     const nextIndex = questionIndex + 1;
@@ -740,6 +740,26 @@ export default function App() {
     })).sort((a, b) => a.pct - b.pct);
   };
 
+  // Topics (linked to Learn tab lessons) where most of this paper's answers
+  // on that topic were wrong — surfaced as a "review this" suggestion.
+  const getWeakTopics = () => {
+    const map = {};
+    paperResults.forEach(r => {
+      if (!r.topicId || !TOPIC_MAP[r.topicId]) return;
+      if (!map[r.topicId]) map[r.topicId] = { correct: 0, total: 0 };
+      map[r.topicId].total++;
+      if (r.correct) map[r.topicId].correct++;
+    });
+    return Object.entries(map)
+      .filter(([, data]) => data.correct < data.total / 2)
+      .map(([topicId, data]) => ({ topicId, ...data, topic: TOPIC_MAP[topicId] }));
+  };
+
+  const goToTopic = (topicId) => {
+    setLearnTopic(topicId);
+    setPage('learn');
+  };
+
   if (!currentUser) {
     return (
       <div className="login-container">
@@ -784,6 +804,7 @@ export default function App() {
     const correctCount = paperResults.filter(r => r.correct).length;
     const graphData = buildGraphData();
     const subjectBreakdown = getSubjectBreakdown();
+    const weakTopics = getWeakTopics();
 
     // SVG graph dimensions
     const W = 600, H = 140, gpad = { top: 10, right: 10, bottom: 30, left: 30 };
@@ -934,6 +955,24 @@ export default function App() {
                             />
                           </div>
                           <span className="subject-pct">{s.pct}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {weakTopics.length > 0 && (
+                    <div className="weak-topics">
+                      <h3>📘 Worth a Review</h3>
+                      <p className="weak-topics-hint">You got most of these wrong this paper — a quick read might help next time.</p>
+                      {weakTopics.map(w => (
+                        <div key={w.topicId} className="weak-topic-row">
+                          <span className="weak-topic-icon">{w.topic.icon}</span>
+                          <div className="weak-topic-info">
+                            <span className="weak-topic-name">{w.topic.title}</span>
+                            <span className="weak-topic-score">{w.correct}/{w.total} correct this paper</span>
+                          </div>
+                          <button className="btn-secondary" onClick={() => goToTopic(w.topicId)}>
+                            Review in Learn →
+                          </button>
                         </div>
                       ))}
                     </div>

@@ -87,6 +87,13 @@ async function initializeDB() {
       ALTER TABLE questions ADD COLUMN IF NOT EXISTS level VARCHAR(20);
     `);
 
+    // Links a question to a Learn-tab topic id (see src/topics.js). Nullable —
+    // not every question (e.g. logic puzzles) maps cleanly to one lesson.
+    // Used to suggest a Learn topic when a child gets most of a topic wrong.
+    await pool.query(`
+      ALTER TABLE questions ADD COLUMN IF NOT EXISTS topic_id VARCHAR(50);
+    `);
+
     // Patch image URLs onto already-seeded Kangaroo questions (idempotent)
     const imagePatches = [
       [1, '/images/jk2025/q1.png'],
@@ -3358,6 +3365,199 @@ async function initializeDB() {
       }
       console.log(`Seeded ${percentPackQuestions.length} Percentage Word Problems into Year 6`);
     }
+
+    // Link questions to a Learn-tab topic (src/topics.js), so a child who gets
+    // most of a topic's questions wrong can be pointed straight at the lesson.
+    // Matched by exact question text rather than gated behind the "already
+    // seeded" checks above, so it also backfills topic_id on databases that
+    // were seeded before this column existed.
+    const topicPackByTopic = {
+      ratios: 'ratios',
+      probability: 'probability',
+      'place value': 'place-value',
+    };
+    for (const [subject, topicId] of Object.entries(topicPackByTopic)) {
+      await pool.query(
+        `UPDATE questions SET topic_id = $1 WHERE source = 'Topic Coverage Pack' AND subject = $2 AND topic_id IS NULL`,
+        [topicId, subject]
+      );
+    }
+    await pool.query(
+      `UPDATE questions SET topic_id = 'percentages' WHERE source = 'Percentage Word Problems 6.2A' AND topic_id IS NULL`
+    );
+
+    // The remaining packs mix several Learn topics under one subject tag, so
+    // they're linked individually by exact question text.
+    const topicByText = [
+      // Year Tier Practice Bank
+      ['What is 10% of 50?', 'percentages'],
+      ['What is 20% of 40?', 'percentages'],
+      ['What is 25% of 80?', 'percentages'],
+      ['What is 50% of 60?', 'percentages'],
+      ['What is 10% of 90?', 'percentages'],
+      ['A rectangle has length 9cm and width 5cm. What is its perimeter?', 'area-perimeter'],
+      ['A rectangle has area 42 cm² and length 7 cm. What is its width?', 'area-perimeter'],
+      ['A class has 12 boys and 18 girls. What fraction of the class are boys?', 'fractions-decimals'],
+      ['Find the missing number: 4, 8, 16, 32, ?', 'number-sequences'],
+      ['What is the perimeter of a square with area 49 cm²?', 'area-perimeter'],
+      ['A recipe needs 250g of flour to make 10 cakes. How much flour is needed for 25 cakes?', 'ratios'],
+      ['The sum of two numbers is 45 and their difference is 9. What is the larger number?', 'solving-linear-equations'],
+      ["A tank is 2/5 full of water. After adding 30 litres, it becomes 4/5 full. What is the tank's total capacity, in litres?", 'fractions-decimals'],
+      ['In a class of 40 students, 60% passed a test on the first try. Of those who failed, half passed on a retake. How many students still had not passed after the retake?', 'percentages'],
+      ['A rectangular garden is 3 times as long as it is wide. Its perimeter is 64 m. What is the width, in metres?', 'area-perimeter'],
+      ['Three friends share £120 in the ratio 2:3:5. How much does the friend with the largest share receive?', 'ratios'],
+      ['A number is increased by 20% and then decreased by 20%. If the final result is 96, what was the original number?', 'percentages'],
+      ['The average of 5 numbers is 18. If one more number is added, the new average becomes 20. What was the number added?', 'averages'],
+      ['A shop reduces a £80 jacket by 25% in a sale, then reduces the sale price by a further 10%. What is the final price, in pounds?', 'percentages'],
+      ['Solve for x: 4x + 7 = 27', 'solving-linear-equations'],
+      ['Solve for x: 3x − 8 = 13', 'solving-linear-equations'],
+      ['What is -7 + 12?', 'negative-numbers'],
+      ['What is -3 × -6?', 'negative-numbers'],
+      ['What is 30% of 150?', 'percentages'],
+      ['Simplify: 5x + 3x − 2x', 'simplifying-expressions'],
+      ['A triangle has angles of 55° and 65°. What is the third angle?', 'angle-rules'],
+      ['Solve for x: 2(x + 5) = 22', 'solving-linear-equations'],
+      ['Expand: 4(2x − 3)', 'expanding-brackets'],
+      ['A right-angled triangle has legs 9cm and 12cm. What is the length of its hypotenuse?', 'pythagoras-theorem'],
+      ['What is the HCF (highest common factor) of 48 and 60?', 'hcf-lcm'],
+      ['What is the LCM (lowest common multiple) of 8 and 12?', 'hcf-lcm'],
+      ['A bag has 4 red, 3 blue and 5 green balls. What is the probability of picking a blue ball at random?', 'probability'],
+      ['Simplify: (3x²) × (4x³)', 'simplifying-expressions'],
+      ['Solve for x: 5x − 3 = 3x + 11', 'solving-linear-equations'],
+      ['Factorise: x² + 7x + 10', 'algebra-basics'],
+      ['The angles of a triangle are in the ratio 2:3:4. What is the size of the largest angle?', 'angle-rules'],
+      ['A number x satisfies 3(x-2) = 2(x+5). Find x.', 'solving-linear-equations'],
+      ['Two numbers have HCF 6 and LCM 90. If one number is 18, what is the other?', 'hcf-lcm'],
+      ["A shape's perimeter is 60cm. Its length is twice its width plus 3cm. Find the width, in cm.", 'area-perimeter'],
+      ['The mean of 4 numbers is 15. Three of the numbers are 10, 14 and 18. What is the fourth number?', 'averages'],
+      ['Solve for x: 6x - 9 = 21', 'solving-linear-equations'],
+      ['Expand: 5(3x + 2)', 'expanding-brackets'],
+      ['Simplify: 7y - 2y + 5y', 'simplifying-expressions'],
+      ['What is the area of a triangle with base 10cm and height 6cm?', 'area-perimeter'],
+      ['What is 60% of 90?', 'percentages'],
+      ['Find the median of: 3, 7, 9, 12, 15', 'averages'],
+      ['Solve: 3(x - 4) = 2(x + 1)', 'solving-linear-equations'],
+      ['Factorise: x² - 9', 'algebra-basics'],
+      ['A right-angled triangle has hypotenuse 25cm and one leg 7cm. What is the length of the other leg, in cm?', 'pythagoras-theorem'],
+      ['The mean of 6 numbers is 12. Find the sum of the 6 numbers.', 'averages'],
+      ['Simplify: (2x³) × (5x²)', 'simplifying-expressions'],
+      ['A cylinder has radius 4cm and height 10cm. Find its volume in terms of π.', '3d-shapes'],
+      ['What is the interior angle of a regular decagon (10 sides)?', '2d-shapes'],
+      ['Solve the simultaneous equations: x+y=10 and x−y=4. Find x.', 'solving-linear-equations'],
+      ['Solve: x² − 5x + 6 = 0. Give the larger solution.', 'algebra-basics'],
+      ['Expand and simplify: (x + 3)(x - 5)', 'algebra-basics'],
+      ['A ladder 17m long leans against a wall with its foot 8m from the wall. How high up the wall does it reach, in metres?', 'pythagoras-theorem'],
+      ['Solve for x: (x/3) + (x/4) = 7', 'solving-linear-equations'],
+      ['A car depreciates by 15% each year. If it costs £20,000 new, what is its value after 2 years, to the nearest pound?', 'percentages'],
+      ['The perimeter of a rectangle is 50cm and its area is 150cm². What is the length of the longer side, in cm?', 'area-perimeter'],
+      ['Two similar triangles have corresponding sides in ratio 2:5. If the area of the smaller triangle is 12cm², what is the area of the larger triangle?', 'area-perimeter'],
+      // Topic Coverage Pack — geometry
+      ['How many degrees are there in a right angle?', 'angle-rules'],
+      ['What is the name of a 2D shape with 5 sides?', '2d-shapes'],
+      ['Find the perimeter of a rectangle with length 9cm and width 4cm, in cm.', 'area-perimeter'],
+      ['How many lines of symmetry does a square have?', '2d-shapes'],
+      ['Find the area of a triangle with base 10cm and height 6cm, in cm².', 'area-perimeter'],
+      ['The angles of a triangle are in the ratio 2:3:4. Find the size of the largest angle, in degrees.', 'angle-rules'],
+      ['What is the sum of the interior angles of a quadrilateral, in degrees?', '2d-shapes'],
+      ['Find the circumference of a circle with radius 7cm. Use π = 22/7. Give your answer in cm.', '2d-shapes'],
+      ['A rectangle has area 48cm² and width 6cm. Find its length, in cm.', 'area-perimeter'],
+      ['Find the size of each exterior angle of a regular hexagon, in degrees.', '2d-shapes'],
+      ['Find the area of a circle with radius 14cm. Use π = 22/7. Give your answer in cm².', 'area-perimeter'],
+      ['A right-angled triangle has legs of 9cm and 12cm. Find the length of the hypotenuse, in cm.', 'pythagoras-theorem'],
+      ['What is the name of a polygon with 8 sides?', '2d-shapes'],
+      ['Find the volume of a cube with side length 4cm, in cm³.', '3d-shapes'],
+      ['Find the volume of a cuboid with dimensions 5cm × 4cm × 3cm, in cm³.', '3d-shapes'],
+      ['Two similar rectangles have lengths 6cm and 9cm. If the area of the smaller rectangle is 24cm², find the area of the larger rectangle, in cm².', 'area-perimeter'],
+      ['Find the total surface area of a cube with side length 5cm, in cm².', '3d-shapes'],
+      ['A cylinder has radius 3cm and height 10cm. Find its volume in terms of π (e.g. 90π).', '3d-shapes'],
+      // Topic Coverage Pack — algebra
+      ['If x + 5 = 12, what is x?', 'solving-linear-equations'],
+      ['What is 3n when n = 4?', 'substitution'],
+      ['Solve: 2x + 3 = 11', 'solving-linear-equations'],
+      ['If y − 6 = 15, find y.', 'solving-linear-equations'],
+      ['Solve: 3(x + 2) = 21', 'solving-linear-equations'],
+      ['The perimeter of a square is (4x) cm. If the perimeter is 36cm, find x.', 'solving-linear-equations'],
+      ['Simplify: 3a + 5a', 'simplifying-expressions'],
+      ['Solve: x/4 = 6', 'solving-linear-equations'],
+      ['Solve: 5x − 4 = 2x + 11', 'solving-linear-equations'],
+      ['Expand: 3(2x − 5)', 'expanding-brackets'],
+      ['Solve the simultaneous equations x + y = 10 and x − y = 4. Find x.', 'solving-linear-equations'],
+      ['Factorise: x^2 + 7x + 12', 'algebra-basics'],
+      ['Simplify: 4x + 3y − x + 2y', 'simplifying-expressions'],
+      ['Solve: 2x + 7 = 19', 'solving-linear-equations'],
+      ['Solve: (2x − 1)/3 = 5', 'solving-linear-equations'],
+      ['Factorise: x^2 − 9', 'algebra-basics'],
+      ['Solve: x^2 − 5x + 6 = 0. Give the smaller solution.', 'algebra-basics'],
+      ['Solve the simultaneous equations 2x + y = 11 and x − y = 1. Find x.', 'solving-linear-equations'],
+      // Topic Coverage Pack — problem solving (only where a single topic clearly fits)
+      ['A school has 320 pupils. If 3/8 of them are boys, how many boys are there?', 'fractions-decimals'],
+      ['A tank holds 180 litres when full. It is currently 2/3 full. How many more litres are needed to fill it?', 'fractions-decimals'],
+      ['A recipe for 4 people needs 200g of rice. How much rice is needed for 10 people, in grams?', 'ratios'],
+      ['A shop reduces a £45 jacket by 20% in a sale. What is the sale price, in pounds?', 'percentages'],
+      ['Tap A alone fills a tank in 12 hours. If tap A works alone for 4 hours, what fraction of the tank is filled?', 'fractions-decimals'],
+      ['A number increased by 15% is 92. What was the original number?', 'percentages'],
+      ['Two numbers have a sum of 45 and a difference of 9. Find the larger number.', 'solving-linear-equations'],
+      ['A shop buys a jacket for £40 and sells it for £56. What is the percentage profit?', 'percentages'],
+      ['A rectangular garden is 3m longer than it is wide. Its area is 70m². Find its width, in metres.', 'algebra-basics'],
+      ['£2000 is invested at 5% compound interest per year. Find the value after 3 years, to the nearest pound.', 'percentages'],
+      // Lucky Dip Word Problems
+      ['There are 1024 tickets for a concert. Half of the tickets have been reserved online and 364 tickets have been bought at the box office. How many tickets are still available?', 'fractions-decimals'],
+      ['Lui has £1560 in his bank account. He spends half of that money on a holiday to New York. He spends another £120 on his electricity bill. How much does he have left?', 'fractions-decimals'],
+      ['Max has 1320 toy soldiers. He gives one third of these to his brother and then another 150 to his cousin. How many does he have left?', 'fractions-decimals'],
+    ];
+    for (const [text, topicId] of topicByText) {
+      await pool.query(
+        `UPDATE questions SET topic_id = $1 WHERE text = $2 AND topic_id IS NULL`,
+        [topicId, text]
+      );
+    }
+
+    // Best-effort topic links for the older question bank (PMC/JMC/Olympiad/
+    // Kangaroo and other pre-existing questions), matched by keyword. Ordered
+    // most-specific-first; each rule only touches rows still unlinked, so
+    // earlier (more confident) matches always win. Anything left unmatched
+    // stays without a topic link rather than risk a misleading suggestion.
+    // Patterns are full ILIKE patterns (wildcards already included) so a
+    // literal '%' can be escaped correctly — '%' is a wildcard in LIKE/ILIKE,
+    // so matching a literal percent sign needs '\%', not a bare '%'.
+    const keywordRules = [
+      [['%pythagor%', '%hypotenuse%'], 'pythagoras-theorem'],
+      [['%highest common factor%', '%hcf%', '%lowest common multiple%', '%lcm%'], 'hcf-lcm'],
+      [['%prime number%', '%is prime%', '%prime factor%'], 'prime-numbers'],
+      [['%coordinate%', '%co-ordinate%', '%midpoint%'], 'coordinates'],
+      [['%percent%', '%\\%%'], 'percentages'],
+      [['%standard form%'], 'place-value'],
+      // 'vertices'/'vertex' deliberately excluded — also used for 2D polygons
+      // and coordinate-geometry points, not just 3D solids.
+      [['%volume%', '%cuboid%', '%cylinder%', '%sphere%', '%cone %', '%surface area%'], '3d-shapes'],
+      [['%circumference%', '%perimeter%', '%area%'], 'area-perimeter'],
+      [['%ratio%'], 'ratios'],
+      [['%probability%'], 'probability'],
+      [['%mean of%', '%median%', '% mode %', '%average of%'], 'averages'],
+      [['%sequence%', '%next term%', '%missing number%'], 'number-sequences'],
+      [['%factorise%'], 'algebra-basics'],
+      [['%simplify:%'], 'simplifying-expressions'],
+      [['%expand:%'], 'expanding-brackets'],
+      // "simultaneous equation(s)", not e.g. "simultaneous matches" in a
+      // scheduling puzzle.
+      [['%simultaneous equation%'], 'solving-linear-equations'],
+      [['%solve:%', '%solve for%'], 'solving-linear-equations'],
+    ];
+    for (const [patterns, topicId] of keywordRules) {
+      const conditions = patterns.map((_, i) => `text ILIKE $${i + 2}`).join(' OR ');
+      await pool.query(
+        `UPDATE questions SET topic_id = $1 WHERE topic_id IS NULL AND (${conditions})`,
+        [topicId, ...patterns]
+      );
+    }
+    // 'angle'/'angles' as a whole word only — a plain substring match would
+    // also hit "triangle", "rectangle", "quadrangle" etc.
+    await pool.query(
+      `UPDATE questions SET topic_id = 'angle-rules' WHERE topic_id IS NULL AND text ~* '\\mangles?\\M'`
+    );
+    // Remaining untagged geometry/algebra questions get a general topic.
+    await pool.query(`UPDATE questions SET topic_id = '2d-shapes' WHERE topic_id IS NULL AND subject = 'geometry'`);
+    await pool.query(`UPDATE questions SET topic_id = 'algebra-basics' WHERE topic_id IS NULL AND subject = 'algebra'`);
 
     console.log('Database tables initialized');
   } catch (err) {

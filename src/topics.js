@@ -73,11 +73,51 @@ export const TOPICS = [
           answer: '39',
         },
       },
+      {
+        heading: 'Working backwards: finding a and d',
+        body: "If you're given two terms instead of the first two, find d first: work out how many steps apart the two given terms are, divide the difference between their values by that number of steps, then substitute back to find a.",
+        example: {
+          question: 'The 5th term of an arithmetic sequence is −2. The 12th term is −12.5. Find the first term and the common difference.',
+          working: [
+            'From the 5th to the 12th term is 7 steps: −12.5 − (−2) = −10.5, so d = −10.5 ÷ 7 = −1.5.',
+            'Substitute into the 5th term: a + 4d = −2, so a = −2 − 4×(−1.5) = −2 + 6 = 4.',
+          ],
+          answer: 'a = 4, d = −1.5',
+        },
+      },
+      {
+        heading: 'Quadratic sequences',
+        body: "In a quadratic sequence, the differences between terms aren't constant — but the differences between those differences (the second differences) are. A constant second difference confirms a sequence is quadratic rather than arithmetic.",
+        example: {
+          question: 'Show that 2, 5, 10, 17, 26, ... is a quadratic sequence, and find the next term.',
+          working: [
+            'First differences: 5−2=3, 10−5=5, 17−10=7, 26−17=9.',
+            'Second differences: 5−3=2, 7−5=2, 9−7=2 — constant, so the sequence is quadratic.',
+            'The first differences keep increasing by 2, so the next one is 9+2=11.',
+            'Next term = 26 + 11 = 37.',
+          ],
+          answer: '37',
+        },
+      },
+      {
+        heading: 'Summing an arithmetic series',
+        body: "Adding up the first n terms of an arithmetic sequence is called a series. Use Sₙ = (n/2) × (2a + (n−1)d), where a is the first term and d is the common difference.",
+        example: {
+          question: 'Find the sum of the first 20 terms of the arithmetic series with first term 5 and common difference 4.',
+          working: [
+            'Sₙ = (n/2) × (2a + (n−1)d).',
+            'S₂₀ = (20/2) × (2×5 + 19×4) = 10 × (10 + 76) = 10 × 86 = 860.',
+          ],
+          answer: '860',
+        },
+      },
     ],
     keyFacts: [
       'Term-to-term rule: how you get from one term to the next (e.g. "add 4").',
       'Position-to-term rule (nth term): a formula that finds any term directly from its position.',
       'Always check the rule works for at least 3 consecutive terms before trusting it.',
+      'Constant second difference → the sequence is quadratic, not arithmetic.',
+      'Sum of an arithmetic series: Sₙ = (n/2)(2a + (n−1)d).',
     ],
   },
 

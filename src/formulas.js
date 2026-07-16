@@ -6,6 +6,7 @@
 export const FORMULAS = {
   'number-sequences': [
     { name: 'nth term (arithmetic)', expression: 'nth term = a + (n − 1) × d', note: 'a = first term, d = common difference' },
+    { name: 'Sum of an arithmetic series', expression: 'Sₙ = (n/2) × (2a + (n − 1)d)', note: '' },
   ],
   'place-value': [
     { name: 'Standard form', expression: 'A × 10ⁿ', note: '1 ≤ A < 10' },

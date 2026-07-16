@@ -3406,6 +3406,161 @@ async function initializeDB() {
       console.log(`Seeded ${percentPackQuestions.length} Percentage Word Problems into Year 6`);
     }
 
+    // Seed the "Arithmetic Sequences Revision" worksheet, idempotent — nth
+    // term derivation, working backwards from two given terms, and summing
+    // an arithmetic series.
+    const arithSeriesCheck = await pool.query(
+      "SELECT COUNT(*) FROM questions WHERE source = 'Arithmetic Sequences Revision (Worksheet)'"
+    );
+    if (parseInt(arithSeriesCheck.rows[0].count) === 0) {
+      const arithSeriesQuestions = [
+        { difficulty: "year8", level: "medium", text: "Find the nth term of the sequence 11, 15, 19, 23, ...", answer: "4n + 7", solution: "Common difference d=4, first term a=11. nth term = a+(n−1)d = 11+4(n−1) = 4n+7." },
+        { difficulty: "year8", level: "medium", text: "Find the nth term of the sequence 2, 9, 16, 23, ...", answer: "7n - 5", solution: "Common difference d=7, first term a=2. nth term = 2+7(n−1) = 7n−5." },
+        { difficulty: "year8", level: "medium", text: "Find the nth term of the sequence 9, 6, 3, 0, ...", answer: "-3n + 12", solution: "Common difference d=−3, first term a=9. nth term = 9−3(n−1) = −3n+12." },
+        { difficulty: "year8", level: "medium", text: "Find the nth term of the sequence −3, −5.5, −8, −10.5, ...", answer: "-2.5n - 0.5", solution: "Common difference d=−2.5, first term a=−3. nth term = −3−2.5(n−1) = −2.5n−0.5." },
+        { difficulty: "year8", level: "medium", text: "The nth term of a sequence is 5n + 3. Find the (n+1)th term of the sequence.", answer: "5n + 8", solution: "Replace n with (n+1): 5(n+1)+3 = 5n+5+3 = 5n+8." },
+        { difficulty: "year8", level: "medium", text: "Find the (n+1)th term of the sequence 7, 10, 13, 16, ...", answer: "3n + 7", solution: "The nth term is 7+3(n−1)=3n+4. The (n+1)th term is 3(n+1)+4 = 3n+7." },
+        { difficulty: "year8", level: "hard", text: "The third term of an arithmetic sequence is 11. The tenth term of the sequence is 32. Find the first term of the sequence.", answer: "5", solution: "From the 3rd to the 10th term is 7 steps: 32−11=21, so d=21÷7=3. First term: a+2d=11, so a=11−6=5." },
+        { difficulty: "year8", level: "hard", text: "The fifth term of an arithmetic sequence is −2. The twelfth term of the sequence is −12.5. Find the first term and the common difference.", answer: "a = 4, d = -1.5", solution: "From the 5th to the 12th term is 7 steps: −12.5−(−2)=−10.5, so d=−10.5÷7=−1.5. First term: a+4d=−2, so a=−2−4×(−1.5)=4." },
+        { difficulty: "year8", level: "hard", text: "Find the sum of the first 20 terms of the arithmetic series with first term 5 and common difference 4.", answer: "860", solution: "Sₙ=(n/2)(2a+(n−1)d). S₂₀=(20/2)(2×5+19×4)=10×(10+76)=10×86=860." },
+        { difficulty: "year8", level: "hard", text: "Find the sum of the first 50 terms of the arithmetic series which starts 7, 4, 1, −2, ...", answer: "-3325", solution: "a=7, d=−3. Sₙ=(n/2)(2a+(n−1)d). S₅₀=(50/2)(14+49×(−3))=25×(14−147)=25×(−133)=−3325." },
+        { difficulty: "year8", level: "hard", text: "An arithmetic series starts 2, 5, 8, ... and has a last term 149. Find the number of terms in the sequence.", answer: "50", solution: "a=2, d=3. Last term: a+(n−1)d=149, so 2+3(n−1)=149, 3(n−1)=147, n−1=49, n=50." },
+        { difficulty: "year8", level: "hard", text: "Find the sum of the first 40 odd numbers.", answer: "1600", solution: "a=1, d=2. Sₙ=(n/2)(2a+(n−1)d). S₄₀=(40/2)(2+39×2)=20×(2+78)=20×80=1600." },
+      ];
+
+      for (const q of arithSeriesQuestions) {
+        await pool.query(
+          `INSERT INTO questions (difficulty, type, text, answer, options, solution, source, subject, level)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [q.difficulty, 'shortAnswer', q.text, q.answer, null, q.solution, 'Arithmetic Sequences Revision (Worksheet)', 'number', q.level]
+        );
+      }
+      console.log(`Seeded ${arithSeriesQuestions.length} Arithmetic Sequences Revision questions`);
+    }
+
+    // Seed the "Generating Sequences" worksheet, idempotent — classifying
+    // sequence types, generating terms from an nth term rule, and reasoning
+    // about which terms satisfy a condition.
+    const genSeqCheck = await pool.query(
+      "SELECT COUNT(*) FROM questions WHERE source = 'Generating Sequences (Worksheet)'"
+    );
+    if (parseInt(genSeqCheck.rows[0].count) === 0) {
+      const genSeqQuestions = [
+        // Classify (special/arithmetic/quadratic/geometric) + next two terms
+        { difficulty: "year7", level: "medium", text: "Classify the sequence 1, 1, 2, 3, 5, 8, ... (special, arithmetic, quadratic or geometric) and write down the next two terms.", answer: "Special (Fibonacci): 13, 21", solution: "Each term is the sum of the two before it (a Fibonacci sequence) — a special sequence. Next terms: 5+8=13, then 8+13=21." },
+        { difficulty: "year7", level: "medium", text: "Classify the sequence 4, 7, 10, 13, ... (special, arithmetic, quadratic or geometric) and write down the next two terms.", answer: "Arithmetic: 16, 19", solution: "The terms increase by a constant 3 each time — arithmetic. Next terms: 13+3=16, 16+3=19." },
+        { difficulty: "year7", level: "medium", text: "Classify the sequence 2, 4, 8, 16, ... (special, arithmetic, quadratic or geometric) and write down the next two terms.", answer: "Geometric: 32, 64", solution: "Each term is double the last — geometric with common ratio 2. Next terms: 16×2=32, 32×2=64." },
+        { difficulty: "year7", level: "medium", text: "Classify the sequence 10, 8, 6, 4, 2, ... (special, arithmetic, quadratic or geometric) and write down the next two terms.", answer: "Arithmetic: 0, -2", solution: "The terms decrease by a constant 2 each time — arithmetic. Next terms: 2−2=0, 0−2=−2." },
+        { difficulty: "year7", level: "medium", text: "Classify the sequence 1, 3, 6, 10, 15, ... (special, arithmetic, quadratic or geometric) and write down the next two terms.", answer: "Special (triangular numbers): 21, 28", solution: "These are the triangular numbers — a special sequence where the gap between terms increases by 1 each time. Next terms: 15+6=21, 21+7=28." },
+        { difficulty: "year7", level: "medium", text: "Classify the sequence 160, 80, 40, 20, ... (special, arithmetic, quadratic or geometric) and write down the next two terms.", answer: "Geometric: 10, 5", solution: "Each term is half the last — geometric with common ratio 1/2. Next terms: 20÷2=10, 10÷2=5." },
+        { difficulty: "year7", level: "medium", text: "Classify the sequence 2, 5, 10, 17, ... (special, arithmetic, quadratic or geometric) and write down the next two terms.", answer: "Quadratic: 26, 37", solution: "First differences are 3, 5, 7, ... which increase by 2 each time (constant second difference) — quadratic. Next terms: 17+9=26, 26+11=37." },
+        { difficulty: "year7", level: "medium", text: "Classify the sequence 1, 3, 5, 7, 9, ... (special, arithmetic, quadratic or geometric) and write down the next two terms.", answer: "Arithmetic: 11, 13", solution: "The terms increase by a constant 2 each time — arithmetic. Next terms: 9+2=11, 11+2=13." },
+        // Generate the first four terms from an nth term rule
+        { difficulty: "year7", level: "easy", text: "Generate the first four terms of the sequence with nth term 2n.", answer: "2, 4, 6, 8", solution: "Substitute n=1,2,3,4: 2×1=2, 2×2=4, 2×3=6, 2×4=8." },
+        { difficulty: "year7", level: "easy", text: "Generate the first four terms of the sequence with nth term 3n − 1.", answer: "2, 5, 8, 11", solution: "Substitute n=1,2,3,4: 3(1)−1=2, 3(2)−1=5, 3(3)−1=8, 3(4)−1=11." },
+        { difficulty: "year7", level: "easy", text: "Generate the first four terms of the sequence with nth term n².", answer: "1, 4, 9, 16", solution: "Substitute n=1,2,3,4: 1²=1, 2²=4, 3²=9, 4²=16." },
+        { difficulty: "year7", level: "easy", text: "Generate the first four terms of the sequence with nth term 20 − n.", answer: "19, 18, 17, 16", solution: "Substitute n=1,2,3,4: 20−1=19, 20−2=18, 20−3=17, 20−4=16." },
+        { difficulty: "year7", level: "easy", text: "Generate the first four terms of the sequence with nth term 7 − 3n.", answer: "4, 1, -2, -5", solution: "Substitute n=1,2,3,4: 7−3=4, 7−6=1, 7−9=−2, 7−12=−5." },
+        { difficulty: "year7", level: "easy", text: "Generate the first four terms of the sequence with nth term n² + 5n.", answer: "6, 14, 24, 36", solution: "Substitute n=1,2,3,4: 1+5=6, 4+10=14, 9+15=24, 16+20=36." },
+        { difficulty: "year7", level: "easy", text: "Generate the first four terms of the sequence with nth term 2n² − 1.", answer: "1, 7, 17, 31", solution: "Substitute n=1,2,3,4: 2−1=1, 8−1=7, 18−1=17, 32−1=31." },
+        { difficulty: "year7", level: "easy", text: "Generate the first four terms of the sequence with nth term n(n+1)/2.", answer: "1, 3, 6, 10", solution: "Substitute n=1,2,3,4: (1×2)/2=1, (2×3)/2=3, (3×4)/2=6, (4×5)/2=10." },
+        // Generate the 6th and 20th terms from an nth term rule
+        { difficulty: "year8", level: "medium", text: "For the sequence with nth term 4n − 1, find the 6th term and the 20th term.", answer: "u6 = 23, u20 = 79", solution: "6th term: 4(6)−1=23. 20th term: 4(20)−1=79." },
+        { difficulty: "year8", level: "medium", text: "For the sequence with nth term n + 10, find the 6th term and the 20th term.", answer: "u6 = 16, u20 = 30", solution: "6th term: 6+10=16. 20th term: 20+10=30." },
+        { difficulty: "year8", level: "medium", text: "For the sequence with nth term 1 + n², find the 6th term and the 20th term.", answer: "u6 = 37, u20 = 401", solution: "6th term: 1+36=37. 20th term: 1+400=401." },
+        { difficulty: "year8", level: "medium", text: "For the sequence with nth term 50 − 5n, find the 6th term and the 20th term.", answer: "u6 = 20, u20 = -50", solution: "6th term: 50−30=20. 20th term: 50−100=−50." },
+        { difficulty: "year8", level: "medium", text: "For the sequence with nth term −1 − n, find the 6th term and the 20th term.", answer: "u6 = -7, u20 = -21", solution: "6th term: −1−6=−7. 20th term: −1−20=−21." },
+        { difficulty: "year8", level: "medium", text: "For the sequence with nth term n² − 2n, find the 6th term and the 20th term.", answer: "u6 = 24, u20 = 360", solution: "6th term: 36−12=24. 20th term: 400−40=360." },
+        { difficulty: "year8", level: "medium", text: "For the sequence with nth term 3n² + n + 1, find the 6th term and the 20th term.", answer: "u6 = 115, u20 = 1221", solution: "6th term: 3(36)+6+1=108+7=115. 20th term: 3(400)+20+1=1200+21=1221." },
+        { difficulty: "year8", level: "medium", text: "For the sequence with nth term (n+1)/(n+2), find the 6th term and the 20th term.", answer: "u6 = 7/8, u20 = 21/22", solution: "6th term: 7/8. 20th term: 21/22." },
+        // Reasoning about which terms satisfy a condition
+        { difficulty: "year8", level: "hard", text: "Find the first term in the sequence with nth term 5n + 7 that is greater than 250.", answer: "252", solution: "5n+7>250, so 5n>243, n>48.6, so the first whole n is 49. Term = 5(49)+7=245+7=252." },
+        { difficulty: "year8", level: "hard", text: "Find the first term in the sequence with nth term 150 − 8n that is a negative number.", answer: "-2", solution: "150−8n<0, so 150<8n, n>18.75, so the first whole n is 19. Term = 150−8(19)=150−152=−2." },
+        { difficulty: "year8", level: "hard", text: "Find the only number that is in both the sequences with nth term rules 2n − 9 and 17 − 7n.", answer: "3", solution: "The sequence 2n−9 (n=1,2,3,...) gives −7,−5,−3,−1,1,3,5,... The sequence 17−7n (n=1,2,3,...) gives 10,3,−4,−11,... The only value common to both is 3 (n=6 in the first, n=2 in the second)." },
+      ];
+
+      for (const q of genSeqQuestions) {
+        await pool.query(
+          `INSERT INTO questions (difficulty, type, text, answer, options, solution, source, subject, level)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [q.difficulty, 'shortAnswer', q.text, q.answer, null, q.solution, 'Generating Sequences (Worksheet)', 'number', q.level]
+        );
+      }
+      console.log(`Seeded ${genSeqQuestions.length} Generating Sequences questions`);
+    }
+
+    // Seed the "Using Uₙ = a + (n−1)d" worksheet, idempotent — direct
+    // formula application through to reverse-engineering a and d from
+    // simultaneous term conditions.
+    const nthTermFormulaCheck = await pool.query(
+      "SELECT COUNT(*) FROM questions WHERE source = 'Nth Term Formula Practice (Worksheet)'"
+    );
+    if (parseInt(nthTermFormulaCheck.rows[0].count) === 0) {
+      const nthTermFormulaQuestions = [
+        { difficulty: "year7", level: "easy", text: "Using Uₙ = a + (n−1)d, find a and d for the sequence 20, 27, 34, 41, ...", answer: "a = 20, d = 7", solution: "a is the first term, 20. d is the common difference: 27−20=7." },
+        { difficulty: "year7", level: "easy", text: "Using Uₙ = a + (n−1)d, find a and d for the sequence 4, 1, −2, −5, ...", answer: "a = 4, d = -3", solution: "a is the first term, 4. d is the common difference: 1−4=−3." },
+        { difficulty: "year7", level: "easy", text: "Given that a = 8 and d = 0.3, write down the first 5 terms of the sequence.", answer: "8, 8.3, 8.6, 8.9, 9.2", solution: "Start at 8 and add 0.3 each time: 8, 8.3, 8.6, 8.9, 9.2." },
+        { difficulty: "year7", level: "easy", text: "Given that a = −2 and d = 0.5, write down the first 5 terms of the sequence.", answer: "-2, -1.5, -1, -0.5, 0", solution: "Start at −2 and add 0.5 each time: −2, −1.5, −1, −0.5, 0." },
+        { difficulty: "year7", level: "medium", text: "Given that the first term is 5 and the common difference is 3, find the 21st term.", answer: "65", solution: "u21 = a+20d = 5+20×3 = 5+60 = 65." },
+        { difficulty: "year7", level: "medium", text: "Given a = 6, d = −5, find the value of the 17th term.", answer: "-74", solution: "u17 = a+16d = 6+16×(−5) = 6−80 = −74." },
+        { difficulty: "year7", level: "medium", text: "Given a = 1.1, d = 0.3, find the value of u₈₀.", answer: "24.8", solution: "u80 = a+79d = 1.1+79×0.3 = 1.1+23.7 = 24.8." },
+        { difficulty: "year7", level: "medium", text: "Given that the first term is 80 and the common difference is −7, find u₃₅.", answer: "-158", solution: "u35 = a+34d = 80+34×(−7) = 80−238 = −158." },
+        { difficulty: "year8", level: "medium", text: "The first term of an arithmetic sequence is 4 and the 11th term is −2. Find the common difference.", answer: "-0.6", solution: "u11 = a+10d = −2, so 4+10d=−2, 10d=−6, d=−0.6." },
+        { difficulty: "year8", level: "medium", text: "In an arithmetic series u₁ = 9 and u₁₅ = 44. Find the first term and common difference.", answer: "a = 9, d = 2.5", solution: "a=9 (given). u15=a+14d=44, so 9+14d=44, 14d=35, d=2.5." },
+        { difficulty: "year8", level: "medium", text: "The 2nd term of an arithmetic sequence is −2.5 and the 9th term is −13. Find u₂₀.", answer: "-29.5", solution: "From the 2nd to the 9th term is 7 steps: −13−(−2.5)=−10.5, so d=−1.5. u2=a+d=−2.5, so a=−1. u20=a+19d=−1+19×(−1.5)=−29.5." },
+        { difficulty: "year8", level: "medium", text: "In an arithmetic series u₅ = −2 and u₂₀ = 118. Find u₇₅.", answer: "558", solution: "From the 5th to the 20th term is 15 steps: 118−(−2)=120, so d=8. u5=a+4d=−2, so a=−34. u75=a+74d=−34+74×8=558." },
+        { difficulty: "year8", level: "hard", text: "Given that u₁ + u₆ = 25 and u₃ + u₁₀ = 43, find the values of a and d.", answer: "a = 5, d = 3", solution: "u1+u6 = a+(a+5d) = 2a+5d = 25. u3+u10 = (a+2d)+(a+9d) = 2a+11d = 43. Subtracting: 6d=18, d=3. Then 2a+15=25, a=5." },
+        { difficulty: "year8", level: "hard", text: "The first term of a sequence is twice the common difference (a = 2d). Given that the 21st term is 110, find the value of a and d.", answer: "a = 10, d = 5", solution: "u21=a+20d=110. Substituting a=2d: 2d+20d=110, 22d=110, d=5, so a=2×5=10." },
+        { difficulty: "year8", level: "hard", text: "The first term of an arithmetic sequence is three more than the common difference (a = d + 3). Given that u₁₄ = −25, find u₅₀.", answer: "-97", solution: "u14=a+13d=−25. Substituting a=d+3: (d+3)+13d=−25, 14d=−28, d=−2, so a=1. u50=a+49d=1+49×(−2)=−97." },
+        { difficulty: "year8", level: "hard", text: "Write an expression in terms of a and d for the sum of the first ten terms of an arithmetic sequence.", answer: "5(2a + 9d)", solution: "S₁₀=(10/2)(2a+9d)=5(2a+9d)." },
+      ];
+
+      for (const q of nthTermFormulaQuestions) {
+        await pool.query(
+          `INSERT INTO questions (difficulty, type, text, answer, options, solution, source, subject, level)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [q.difficulty, 'shortAnswer', q.text, q.answer, null, q.solution, 'Nth Term Formula Practice (Worksheet)', 'number', q.level]
+        );
+      }
+      console.log(`Seeded ${nthTermFormulaQuestions.length} Nth Term Formula Practice questions`);
+    }
+
+    // Seed the "Area of a Circle" worksheet, idempotent — radius/diameter
+    // conversion through to area calculations from both a stated radius and
+    // a stated diameter.
+    const circleAreaCheck = await pool.query(
+      "SELECT COUNT(*) FROM questions WHERE source = 'Area of a Circle (Worksheet)'"
+    );
+    if (parseInt(circleAreaCheck.rows[0].count) === 0) {
+      const circleAreaQuestions = [
+        { difficulty: "year6", level: "easy", text: "Find the radius of a circle when the diameter is 5cm.", answer: "2.5", solution: "Radius = diameter ÷ 2 = 5 ÷ 2 = 2.5cm." },
+        { difficulty: "year6", level: "easy", text: "Find the radius of a circle when the diameter is 8.2m.", answer: "4.1", solution: "Radius = diameter ÷ 2 = 8.2 ÷ 2 = 4.1m." },
+        { difficulty: "year6", level: "easy", text: "Find the diameter of a circle when the radius is 47mm.", answer: "94", solution: "Diameter = 2 × radius = 2 × 47 = 94mm." },
+        { difficulty: "year6", level: "easy", text: "Find the diameter of a circle when the radius is 0.7m.", answer: "1.4", solution: "Diameter = 2 × radius = 2 × 0.7 = 1.4m." },
+        { difficulty: "year7", level: "medium", text: "Find the area of a circle with a radius of 6cm, to 1 decimal place.", answer: "113.1", solution: "Area = π × r² = π × 36 ≈ 113.1cm²." },
+        { difficulty: "year7", level: "medium", text: "Find the area of a circle with a radius of 80mm, to 1 decimal place.", answer: "20106.2", solution: "Area = π × r² = π × 6400 ≈ 20106.2mm²." },
+        { difficulty: "year7", level: "medium", text: "Find the area of a circle with a radius of 3.5m, to 1 decimal place.", answer: "38.5", solution: "Area = π × r² = π × 12.25 ≈ 38.5m²." },
+        { difficulty: "year7", level: "medium", text: "Find the area of a circle with a radius of 13.5cm, to 1 decimal place.", answer: "572.6", solution: "Area = π × r² = π × 182.25 ≈ 572.6cm²." },
+        { difficulty: "year7", level: "medium", text: "Find the area of a circle with a diameter of 30mm, to 1 decimal place.", answer: "706.9", solution: "Radius = 15mm. Area = π × r² = π × 225 ≈ 706.9mm²." },
+        { difficulty: "year7", level: "medium", text: "Find the area of a circle with a diameter of 1.8m, to 1 decimal place.", answer: "2.5", solution: "Radius = 0.9m. Area = π × r² = π × 0.81 ≈ 2.5m²." },
+        { difficulty: "year7", level: "medium", text: "Find the area of a circle with a diameter of 26mm, to 1 decimal place.", answer: "530.9", solution: "Radius = 13mm. Area = π × r² = π × 169 ≈ 530.9mm²." },
+        { difficulty: "year7", level: "medium", text: "Find the area of a circle with a diameter of 45cm, to 1 decimal place.", answer: "1590.4", solution: "Radius = 22.5cm. Area = π × r² = π × 506.25 ≈ 1590.4cm²." },
+        { difficulty: "year7", level: "medium", text: "A circle has a radius of 9cm. Find its area, to 1 decimal place.", answer: "254.5", solution: "Area = π × r² = π × 81 ≈ 254.5cm²." },
+        { difficulty: "year7", level: "medium", text: "A circle has a radius of 70mm. Find its area, to 1 decimal place.", answer: "15393.8", solution: "Area = π × r² = π × 4900 ≈ 15393.8mm²." },
+        { difficulty: "year7", level: "medium", text: "A circle has a radius of 0.5m. Find its area, to 1 decimal place.", answer: "0.8", solution: "Area = π × r² = π × 0.25 ≈ 0.8m²." },
+        { difficulty: "year7", level: "medium", text: "A circle has a diameter of 14cm. Find its area, to 1 decimal place.", answer: "153.9", solution: "Radius = 7cm. Area = π × r² = π × 49 ≈ 153.9cm²." },
+      ];
+
+      for (const q of circleAreaQuestions) {
+        await pool.query(
+          `INSERT INTO questions (difficulty, type, text, answer, options, solution, source, subject, level)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [q.difficulty, 'shortAnswer', q.text, q.answer, null, q.solution, 'Area of a Circle (Worksheet)', 'geometry', q.level]
+        );
+      }
+      console.log(`Seeded ${circleAreaQuestions.length} Area of a Circle questions`);
+    }
+
     // Link questions to a Learn-tab topic (src/topics.js), so a child who gets
     // most of a topic's questions wrong can be pointed straight at the lesson.
     // Matched by exact question text rather than gated behind the "already
@@ -3424,6 +3579,20 @@ async function initializeDB() {
     }
     await pool.query(
       `UPDATE questions SET topic_id = 'percentages' WHERE source = 'Percentage Word Problems 6.2A' AND topic_id IS NULL`
+    );
+    await pool.query(
+      `UPDATE questions SET topic_id = 'number-sequences' WHERE topic_id IS NULL AND source IN ('Arithmetic Sequences Revision (Worksheet)', 'Generating Sequences (Worksheet)', 'Nth Term Formula Practice (Worksheet)')`
+    );
+    await pool.query(
+      `UPDATE questions SET topic_id = 'area-perimeter' WHERE topic_id IS NULL AND source = 'Area of a Circle (Worksheet)'`
+    );
+    await pool.query(
+      `UPDATE questions SET topic_id = '2d-shapes' WHERE source = 'Area of a Circle (Worksheet)' AND text IN (
+         'Find the radius of a circle when the diameter is 5cm.',
+         'Find the radius of a circle when the diameter is 8.2m.',
+         'Find the diameter of a circle when the radius is 47mm.',
+         'Find the diameter of a circle when the radius is 0.7m.'
+       )`
     );
 
     // The remaining packs mix several Learn topics under one subject tag, so

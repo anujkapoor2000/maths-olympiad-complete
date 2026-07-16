@@ -7,6 +7,9 @@
 // stays easy to scan and edit.
 
 export const TOPICS = [
+  // =========================================================================
+  // NUMBER
+  // =========================================================================
   {
     id: 'number-sequences',
     title: 'Number Sequences',
@@ -133,117 +136,265 @@ export const TOPICS = [
   },
 
   {
-    id: 'ratios',
-    title: 'Ratios',
-    icon: '⚖️',
+    id: 'negative-numbers',
+    title: 'Negative Numbers',
+    icon: '➖',
     category: 'Number',
-    summary: 'Comparing quantities and sharing amounts fairly using the "parts" method.',
+    summary: 'Adding, subtracting, multiplying and dividing with numbers below zero.',
     sections: [
       {
-        heading: 'What is a ratio?',
-        body: "A ratio compares two or more quantities. Writing 2:3 means 'for every 2 of the first thing, there are 3 of the second thing'. Ratios are simplified the same way fractions are — divide every number by their highest common factor.",
+        heading: 'The number line',
+        body: "Negative numbers are less than zero. On a number line, they sit to the left of 0 — the further left a number is, the smaller it is, no matter how big it 'looks' without the minus sign.",
+      },
+      {
+        heading: 'Adding and subtracting negative numbers',
+        body: "Adding a negative number is the same as subtracting. Subtracting a negative number is the same as adding (the two minus signs cancel out).",
         example: {
-          question: 'Simplify the ratio 18:24:30.',
+          question: 'Work out: −5 + (−3), and 4 − (−6)',
           working: [
-            'Find the highest common factor of 18, 24 and 30: it is 6.',
-            'Divide every number by 6: 18÷6=3, 24÷6=4, 30÷6=5.',
+            'Adding a negative: −5 + (−3) = −5 − 3 = −8.',
+            'Subtracting a negative: 4 − (−6) = 4 + 6 = 10.',
           ],
-          answer: '3:4:5',
+          answer: '−8 and 10',
         },
       },
       {
-        heading: 'Sharing an amount in a given ratio',
-        body: "The reliable way to share in a ratio: add up the parts, divide the total by that to find the value of 1 part, then multiply to find each share.",
+        heading: 'Multiplying and dividing negative numbers',
+        body: "Same signs give a positive answer. Different signs give a negative answer.",
         example: {
-          question: 'Share £84 in the ratio 2:3:7.',
+          question: 'Work out: −4 × (−6), and −4 × 6',
           working: [
-            'Add the parts: 2+3+7=12 parts in total.',
-            'Value of 1 part: £84÷12=£7.',
-            'Shares: 2×£7=£14, 3×£7=£21, 7×£7=£49.',
+            'Same signs (both negative): −4 × (−6) = 24.',
+            'Different signs (negative × positive): −4 × 6 = −24.',
           ],
-          answer: '£14, £21, £49',
+          answer: '24 and −24',
         },
       },
       {
-        heading: 'Combining ratios',
-        body: "If you know a:b and b:c, you can find a:b:c — scale both ratios so the value for b matches in each.",
+        heading: 'Ordering negative numbers',
+        body: "To order negative numbers, picture (or draw) a number line. Numbers further to the right are always larger.",
         example: {
-          question: 'a:b = 2:3 and b:c = 4:5. Find a:b:c.',
+          question: 'Put these in order, smallest first: 3, −7, 0, −2, 5',
           working: [
-            'Scale a:b so b=12: multiply by 4 → a:b = 8:12.',
-            'Scale b:c so b=12: multiply by 3 → b:c = 12:15.',
-            'Now both have b=12, so combine: a:b:c = 8:12:15.',
+            'Place them on a number line from left (smallest) to right (largest).',
+            'Reading left to right: −7, −2, 0, 3, 5.',
           ],
-          answer: '8:12:15',
+          answer: '−7, −2, 0, 3, 5',
         },
       },
     ],
     keyFacts: [
-      'Simplify a ratio by dividing every part by their highest common factor.',
-      '"Parts" method: total parts → value of 1 part → value of each share.',
-      'To combine two ratios, scale them so the shared quantity matches.',
+      'Adding a negative = subtracting. Subtracting a negative = adding.',
+      'Same signs multiply/divide to a positive answer; different signs give a negative answer.',
+      'On a number line, further right always means larger — e.g. −2 is bigger than −7.',
     ],
   },
 
   {
-    id: 'probability',
-    title: 'Probability',
-    icon: '🎲',
+    id: 'prime-numbers',
+    title: 'Prime Numbers',
+    icon: '🔍',
     category: 'Number',
-    summary: 'How likely something is to happen, from impossible (0) to certain (1).',
-    diagram: 'probability-scale',
+    summary: 'Numbers with exactly two factors — 1 and themselves.',
     sections: [
       {
-        heading: 'The probability scale',
-        body: "Probability is measured from 0 (impossible) to 1 (certain). It can be written as a fraction, decimal or percentage. A probability of 1/2 (or 0.5, or 50%) means an event is just as likely to happen as not.",
-      },
-      {
-        heading: 'Calculating a simple probability',
-        body: "P(event) = number of favourable outcomes ÷ total number of possible outcomes.",
+        heading: 'What is a prime number?',
+        body: "A prime number has exactly two factors: 1 and itself. A number with more than two factors is called composite. Note that 1 is not a prime number, because it only has one factor.",
         example: {
-          question: 'A bag has 3 green, 5 yellow and 2 red counters. What is the probability of picking red?',
+          question: 'Which of these are prime? 7, 8, 9, 11, 15',
           working: [
-            'Total counters: 3+5+2=10.',
-            'Favourable outcomes (red): 2.',
-            'P(red) = 2/10 = 1/5.',
+            '7: factors are 1 and 7 only → prime.',
+            '8: factors are 1, 2, 4, 8 → not prime.',
+            '9: factors are 1, 3, 9 → not prime.',
+            '11: factors are 1 and 11 only → prime.',
+            '15: factors are 1, 3, 5, 15 → not prime.',
           ],
-          answer: '1/5',
+          answer: '7 and 11 are prime',
         },
       },
       {
-        heading: 'Combined independent events',
-        body: "For two independent events (one doesn't affect the other), multiply their probabilities together to find the probability of both happening.",
-        example: {
-          question: 'A die is rolled twice. What is the probability of rolling a 6 both times?',
-          working: [
-            'P(6 on one roll) = 1/6.',
-            'The rolls are independent, so multiply: 1/6 × 1/6 = 1/36.',
-          ],
-          answer: '1/36',
-        },
+        heading: 'The first few prime numbers',
+        body: "2, 3, 5, 7, 11, 13, 17, 19, 23, 29, ... Notice that 2 is the only even prime number — every other even number can be divided by 2, so it has more than two factors.",
       },
       {
-        heading: 'Without replacement',
-        body: "If items are removed and not put back, the total (and sometimes the favourable count) changes for the next pick.",
+        heading: 'Prime factor trees',
+        body: "Every whole number greater than 1 can be broken down into a unique product of prime numbers — its prime factorisation. A factor tree finds it quickly: split the number into two factors, then keep splitting any factor that isn't prime.",
         example: {
-          question: 'A bag has 3 red and 4 blue balls. Two are drawn without replacement. Find P(both red).',
+          question: 'Find the prime factorisation of 60.',
           working: [
-            'P(1st is red) = 3/7.',
-            'After removing one red, 2 red and 6 total remain: P(2nd is red) = 2/6.',
-            'Multiply: 3/7 × 2/6 = 6/42 = 1/7.',
+            'Split 60 = 6 × 10.',
+            'Split 6 = 2 × 3 (both prime). Split 10 = 2 × 5 (both prime).',
+            '60 = 2 × 3 × 2 × 5 = 2² × 3 × 5.',
           ],
-          answer: '1/7',
+          answer: '60 = 2² × 3 × 5',
         },
       },
     ],
     keyFacts: [
-      'All probabilities are between 0 (impossible) and 1 (certain).',
-      'P(event) = favourable outcomes ÷ total outcomes.',
-      'Independent events: multiply the probabilities.',
-      '"Not happening": P(not A) = 1 − P(A).',
+      'A prime number has exactly two factors: 1 and itself.',
+      '1 is not prime. 2 is the only even prime number.',
+      'Every number greater than 1 can be broken into a unique product of primes.',
     ],
   },
 
+  {
+    id: 'hcf-lcm',
+    title: 'HCF & LCM',
+    icon: '🔗',
+    category: 'Number',
+    summary: 'The Highest Common Factor and Lowest Common Multiple of two numbers.',
+    sections: [
+      {
+        heading: 'Highest Common Factor (HCF)',
+        body: "The HCF of two numbers is the largest number that divides into both of them exactly. List the factors of each number, then find the largest one they have in common.",
+        example: {
+          question: 'Find the HCF of 24 and 36.',
+          working: [
+            'Factors of 24: 1, 2, 3, 4, 6, 8, 12, 24.',
+            'Factors of 36: 1, 2, 3, 4, 6, 9, 12, 18, 36.',
+            'Common factors: 1, 2, 3, 4, 6, 12. The highest is 12.',
+          ],
+          answer: '12',
+        },
+      },
+      {
+        heading: 'Lowest Common Multiple (LCM)',
+        body: "The LCM of two numbers is the smallest number that is a multiple of both. List the multiples of each number, then find the smallest one they have in common.",
+        example: {
+          question: 'Find the LCM of 6 and 8.',
+          working: [
+            'Multiples of 6: 6, 12, 18, 24, 30, ...',
+            'Multiples of 8: 8, 16, 24, 32, ...',
+            'The smallest number in both lists is 24.',
+          ],
+          answer: '24',
+        },
+      },
+      {
+        heading: 'Using prime factors for bigger numbers',
+        body: "For larger numbers, listing factors or multiples takes too long. Instead, write each number as a product of primes. HCF: multiply the prime factors common to both, using the lowest power of each. LCM: multiply every prime factor that appears in either number, using the highest power of each.",
+        example: {
+          question: 'Find the HCF and LCM of 60 and 72 using prime factors.',
+          working: [
+            '60 = 2² × 3 × 5. 72 = 2³ × 3².',
+            'HCF: lowest power of each shared prime: 2² × 3 = 12.',
+            'LCM: highest power of every prime that appears: 2³ × 3² × 5 = 360.',
+          ],
+          answer: 'HCF = 12, LCM = 360',
+        },
+      },
+    ],
+    keyFacts: [
+      'HCF: the largest number that divides exactly into both numbers.',
+      'LCM: the smallest number that both numbers divide into exactly.',
+      'For bigger numbers, use prime factorisation: HCF uses the lowest shared powers, LCM uses the highest powers of every prime involved.',
+    ],
+  },
+
+  {
+    id: 'fractions-decimals',
+    title: 'Fractions, Decimals & Percentages',
+    icon: '🍕',
+    category: 'Number',
+    summary: 'Converting between the three forms, and adding, subtracting, multiplying and dividing fractions.',
+    sections: [
+      {
+        heading: 'Converting between fractions, decimals and percentages',
+        body: "Fraction → decimal: divide the numerator by the denominator. Decimal → percentage: multiply by 100. Percentage → fraction: write over 100 and simplify.",
+        example: {
+          question: 'Write 3/4 as a decimal and a percentage.',
+          working: [
+            '3/4 = 3 ÷ 4 = 0.75.',
+            '0.75 × 100 = 75%.',
+          ],
+          answer: '0.75 and 75%',
+        },
+      },
+      {
+        heading: 'Adding and subtracting fractions',
+        body: "Fractions need the same denominator before you can add or subtract them. Find a common denominator, convert each fraction, then add or subtract the numerators.",
+        example: {
+          question: 'Work out: 1/3 + 1/4',
+          working: [
+            'Common denominator of 3 and 4 is 12.',
+            '1/3 = 4/12 and 1/4 = 3/12.',
+            '4/12 + 3/12 = 7/12.',
+          ],
+          answer: '7/12',
+        },
+      },
+      {
+        heading: 'Multiplying and dividing fractions',
+        body: "To multiply fractions, multiply the numerators together and the denominators together. To divide by a fraction, flip it (find its reciprocal) and multiply instead.",
+        example: {
+          question: 'Work out: 2/5 × 3/4, and 2/3 ÷ 1/6',
+          working: [
+            'Multiply: 2/5 × 3/4 = (2×3)/(5×4) = 6/20 = 3/10.',
+            'Divide: flip 1/6 to 6/1, then multiply: 2/3 × 6/1 = 12/3 = 4.',
+          ],
+          answer: '3/10 and 4',
+        },
+      },
+    ],
+    keyFacts: [
+      'Fraction to decimal: divide top by bottom. Decimal to percentage: ×100.',
+      'Add/subtract fractions: match the denominators first.',
+      'Multiply fractions straight across. Divide fractions by flipping the second one and multiplying.',
+    ],
+  },
+
+  {
+    id: 'percentages',
+    title: 'Percentages',
+    icon: '％',
+    category: 'Number',
+    summary: '"Per cent" means "out of 100" — how to find, increase, decrease and reverse them.',
+    sections: [
+      {
+        heading: 'What percentages mean',
+        body: "A percentage is just a fraction out of 100. 50% = 50/100 = 1/2 = 0.5. To convert a fraction or decimal to a percentage, multiply by 100.",
+      },
+      {
+        heading: 'Finding a percentage of an amount',
+        body: "Convert the percentage to a decimal (divide by 100), then multiply.",
+        example: {
+          question: 'Find 15% of £45.',
+          working: ['15% = 0.15.', '0.15 × 45 = £6.75.'],
+          answer: '£6.75',
+        },
+      },
+      {
+        heading: 'Percentage increase and decrease',
+        body: "To increase by a percentage, multiply by (1 + the percentage as a decimal). To decrease, multiply by (1 − the percentage as a decimal).",
+        example: {
+          question: 'Tyger jumps 20% further than Newton. Newton jumps 400cm. How far does Tyger jump?',
+          working: ['Increase multiplier: 1 + 0.20 = 1.20.', '400 × 1.20 = 480cm.'],
+          answer: '480cm',
+        },
+      },
+      {
+        heading: 'Reverse percentages (working backwards)',
+        body: "If you're told the amount left AFTER a percentage change, and asked for the ORIGINAL amount, divide instead of multiplying.",
+        example: {
+          question: 'Sally spends 15% on food and 35% on rent, leaving £350. What was her budget?',
+          working: [
+            'Spent so far: 15%+35%=50%, so the remaining 50% is £350.',
+            'Whole budget = 350 ÷ 0.5 = £700.',
+          ],
+          answer: '£700',
+        },
+      },
+    ],
+    keyFacts: [
+      '"Per cent" = "out of 100". 50% = 1/2 = 0.5.',
+      'Percentage of an amount: convert to a decimal, then multiply.',
+      'Reverse percentage: divide by the decimal that the remaining amount represents.',
+    ],
+  },
+
+  // =========================================================================
+  // ALGEBRA
+  // =========================================================================
   {
     id: 'algebra-basics',
     title: 'Algebra Basics',
@@ -301,10 +452,400 @@ export const TOPICS = [
   },
 
   {
+    id: 'algebraic-notation',
+    title: 'Algebraic Notation',
+    icon: '🔤',
+    category: 'Algebra',
+    summary: "The shorthand rules mathematicians use for writing expressions with letters.",
+    sections: [
+      {
+        heading: 'Why do we use letters?',
+        body: "A letter (like x or n) stands for a number we don't know yet, or a number that can change. Using letters lets us write general rules that work for every number, not just one example.",
+      },
+      {
+        heading: 'The shorthand rules',
+        body: "3 × x is written 3x (the multiplication sign is dropped). x × x is written x² (say 'x squared'). x ÷ 4 is written x/4. x + x + x is the same as 3x.",
+        example: {
+          question: 'Write these using algebraic notation: (a) 5 lots of y, (b) y multiplied by itself, (c) y divided by 2',
+          working: [
+            '(a) 5 × y = 5y.',
+            '(b) y × y = y².',
+            '(c) y ÷ 2 = y/2.',
+          ],
+          answer: '5y, y², y/2',
+        },
+      },
+      {
+        heading: 'Terms, expressions and coefficients',
+        body: "A term is a single number, letter, or numbers/letters multiplied together (like 3x or 7). An expression is one or more terms added or subtracted together (like 3x + 7). The coefficient is the number in front of a letter — in 3x, the coefficient is 3.",
+      },
+    ],
+    keyFacts: [
+      '3 × x is written 3x. x × x is written x².',
+      'A term is a single piece (3x); an expression is terms combined (3x + 7).',
+      'The coefficient is the number multiplying the letter.',
+    ],
+  },
+
+  {
+    id: 'simplifying-expressions',
+    title: 'Simplifying Expressions',
+    icon: '➗',
+    category: 'Algebra',
+    summary: 'Collecting like terms to write an expression in its shortest form.',
+    sections: [
+      {
+        heading: 'Like terms',
+        body: "Like terms have exactly the same letter part (e.g. 3x and 5x are like terms; 3x and 5x² are not, because the powers are different). You can only add or subtract like terms.",
+      },
+      {
+        heading: 'Collecting like terms',
+        body: "Group the like terms together, then add or subtract their coefficients. Terms that aren't alike stay separate in the answer.",
+        example: {
+          question: 'Simplify: 4x + 3y − x + 2y',
+          working: [
+            'Group the x terms: 4x − x = 3x.',
+            'Group the y terms: 3y + 2y = 5y.',
+            'Combine: 3x + 5y.',
+          ],
+          answer: '3x + 5y',
+        },
+      },
+      {
+        heading: 'Simplifying with powers',
+        body: "When multiplying the same letter, add the powers: x² × x³ = x⁵. When dividing, subtract the powers: x⁵ ÷ x² = x³.",
+        example: {
+          question: 'Simplify: x³ × x²',
+          working: [
+            'Add the powers: 3+2=5.',
+            'x³ × x² = x⁵.',
+          ],
+          answer: 'x⁵',
+        },
+      },
+    ],
+    keyFacts: [
+      'Only like terms (same letter part) can be combined.',
+      'Add/subtract the coefficients of like terms; keep the letter part the same.',
+      'Multiplying powers of the same letter: add the powers. Dividing: subtract the powers.',
+    ],
+  },
+
+  {
+    id: 'expanding-brackets',
+    title: 'Expanding Single Brackets',
+    icon: '🔓',
+    category: 'Algebra',
+    summary: 'Multiplying everything inside a bracket by the term outside.',
+    sections: [
+      {
+        heading: 'The rule',
+        body: "To expand a(b + c), multiply the term outside the bracket by each term inside: a(b+c) = ab + ac. This works with negative terms too — be careful with signs.",
+        example: {
+          question: 'Expand: 3(2x + 5)',
+          working: [
+            'Multiply 3 by 2x: 3×2x=6x.',
+            'Multiply 3 by 5: 3×5=15.',
+            'Result: 6x + 15.',
+          ],
+          answer: '6x + 15',
+        },
+      },
+      {
+        heading: 'Expanding with a negative term outside',
+        body: "If the term outside the bracket is negative, every term inside changes sign when multiplied out.",
+        example: {
+          question: 'Expand: −2(3x − 4)',
+          working: [
+            'Multiply −2 by 3x: −2×3x=−6x.',
+            'Multiply −2 by −4: −2×(−4)=+8.',
+            'Result: −6x + 8.',
+          ],
+          answer: '−6x + 8',
+        },
+      },
+      {
+        heading: 'Expand then simplify',
+        body: "Sometimes you need to expand brackets and then collect like terms to finish simplifying.",
+        example: {
+          question: 'Expand and simplify: 4(x + 3) + 2x',
+          working: [
+            'Expand: 4(x+3) = 4x + 12.',
+            'Add the remaining term: 4x + 12 + 2x.',
+            'Collect like terms: 4x + 2x = 6x, so 6x + 12.',
+          ],
+          answer: '6x + 12',
+        },
+      },
+    ],
+    keyFacts: [
+      'a(b+c) = ab + ac — multiply everything inside by the term outside.',
+      'A negative outside the bracket flips the sign of every term inside.',
+      'After expanding, check if you can simplify further by collecting like terms.',
+    ],
+  },
+
+  {
+    id: 'substitution',
+    title: 'Substitution',
+    icon: '🔁',
+    category: 'Algebra',
+    summary: 'Replacing letters with numbers to work out the value of an expression.',
+    sections: [
+      {
+        heading: 'What is substitution?',
+        body: "Substitution means replacing each letter in an expression with a given number, then working out the answer using the normal order of operations (BIDMAS).",
+        example: {
+          question: 'Find the value of 3x + 5 when x = 4.',
+          working: [
+            'Replace x with 4: 3×4 + 5.',
+            '3×4=12, then 12+5=17.',
+          ],
+          answer: '17',
+        },
+      },
+      {
+        heading: 'Substituting into more complex expressions',
+        body: "With more than one letter, replace each one carefully, and remember powers apply only to the letter (or bracket) they're attached to.",
+        example: {
+          question: 'Find the value of 2a² + b when a=3 and b=7.',
+          working: [
+            'Replace the letters: 2×(3²) + 7.',
+            '3²=9, so 2×9=18.',
+            '18+7=25.',
+          ],
+          answer: '25',
+        },
+      },
+      {
+        heading: 'A common mistake to avoid',
+        body: "Be careful with negative numbers when substituting — always put them in brackets first. For x=−2, x² means (−2)² = 4, not the mistaken reading of −2² as −4.",
+        example: {
+          question: 'Find the value of x² + 3 when x = −2.',
+          working: [
+            'Put the negative number in brackets: (−2)² + 3.',
+            '(−2)² = 4 (a negative times a negative is positive).',
+            '4 + 3 = 7.',
+          ],
+          answer: '7',
+        },
+      },
+    ],
+    keyFacts: [
+      'Substitution = replace the letters with the given numbers, then calculate.',
+      'Follow the normal order of operations (BIDMAS) once the numbers are in.',
+      'Put negative numbers in brackets before applying a power, to avoid sign mistakes.',
+    ],
+  },
+
+  {
+    id: 'coordinates',
+    title: 'Plotting Coordinates',
+    icon: '📍',
+    category: 'Algebra',
+    summary: 'Describing and plotting the position of a point on a grid.',
+    diagram: 'coordinates',
+    sections: [
+      {
+        heading: 'The coordinate grid',
+        body: "A coordinate is written as (x, y). The x-coordinate tells you how far to move left/right (horizontally) from the origin (0,0); the y-coordinate tells you how far to move up/down (vertically). Right and up are positive; left and down are negative.",
+        example: {
+          question: 'Plot the point (3, 2).',
+          working: [
+            'Start at the origin (0,0).',
+            'Move 3 right (x=3).',
+            'Move 2 up (y=2).',
+          ],
+          answer: 'The point is 3 across and 2 up from the origin',
+        },
+      },
+      {
+        heading: 'The four quadrants',
+        body: "The grid is split into 4 quadrants by the x-axis and y-axis. Top-right: x positive, y positive. Top-left: x negative, y positive. Bottom-left: x negative, y negative. Bottom-right: x positive, y negative.",
+      },
+      {
+        heading: 'Midpoint of a line segment',
+        body: "To find the point exactly halfway between two coordinates, average the x-values and average the y-values separately.",
+        example: {
+          question: 'Find the midpoint of (2, 3) and (8, 7).',
+          working: [
+            'Average the x-values: (2+8)÷2=5.',
+            'Average the y-values: (3+7)÷2=5.',
+            'Midpoint: (5, 5).',
+          ],
+          answer: '(5, 5)',
+        },
+      },
+    ],
+    keyFacts: [
+      'A coordinate (x, y): x is across, y is up.',
+      'The origin is (0, 0), where the axes cross.',
+      'Midpoint of two points: average the x-values and average the y-values.',
+    ],
+  },
+
+  {
+    id: 'solving-linear-equations',
+    title: 'Solving Linear Equations',
+    icon: '⚖️',
+    category: 'Algebra',
+    summary: 'Finding the value of the unknown letter using the balance method.',
+    sections: [
+      {
+        heading: 'The balance method',
+        body: "An equation is balanced — both sides are equal. Whatever you do to one side, you must do to the other, to keep it balanced. Undo operations in reverse order to isolate the letter.",
+        example: {
+          question: 'Solve: 3x + 4 = 19',
+          working: [
+            'Subtract 4 from both sides: 3x = 15.',
+            'Divide both sides by 3: x = 5.',
+          ],
+          answer: 'x = 5',
+        },
+      },
+      {
+        heading: 'Equations with the letter on both sides',
+        body: "Move all the letter terms to one side and all the number terms to the other, by adding or subtracting from both sides.",
+        example: {
+          question: 'Solve: 5x − 4 = 2x + 11',
+          working: [
+            'Subtract 2x from both sides: 3x − 4 = 11.',
+            'Add 4 to both sides: 3x = 15.',
+            'Divide by 3: x = 5.',
+          ],
+          answer: 'x = 5',
+        },
+      },
+      {
+        heading: 'Equations with brackets',
+        body: "If the equation has brackets, expand them first, then solve as normal.",
+        example: {
+          question: 'Solve: 3(x + 2) = 21',
+          working: [
+            'Expand the bracket: 3x + 6 = 21.',
+            'Subtract 6 from both sides: 3x = 15.',
+            'Divide by 3: x = 5.',
+          ],
+          answer: 'x = 5',
+        },
+      },
+    ],
+    keyFacts: [
+      'Whatever you do to one side of the equation, do to the other.',
+      'Undo addition/subtraction first, then multiplication/division — working backwards.',
+      'If there are brackets, expand them before you start solving.',
+    ],
+  },
+
+  // =========================================================================
+  // RATIO AND PROPORTION
+  // =========================================================================
+  {
+    id: 'ratios',
+    title: 'Ratios',
+    icon: '⚖️',
+    category: 'Ratio and Proportion',
+    summary: 'Comparing quantities and sharing amounts fairly using the "parts" method.',
+    sections: [
+      {
+        heading: 'What is a ratio?',
+        body: "A ratio compares two or more quantities. Writing 2:3 means 'for every 2 of the first thing, there are 3 of the second thing'. Ratios are simplified the same way fractions are — divide every number by their highest common factor.",
+        example: {
+          question: 'Simplify the ratio 18:24:30.',
+          working: [
+            'Find the highest common factor of 18, 24 and 30: it is 6.',
+            'Divide every number by 6: 18÷6=3, 24÷6=4, 30÷6=5.',
+          ],
+          answer: '3:4:5',
+        },
+      },
+      {
+        heading: 'Sharing an amount in a given ratio',
+        body: "The reliable way to share in a ratio: add up the parts, divide the total by that to find the value of 1 part, then multiply to find each share.",
+        example: {
+          question: 'Share £84 in the ratio 2:3:7.',
+          working: [
+            'Add the parts: 2+3+7=12 parts in total.',
+            'Value of 1 part: £84÷12=£7.',
+            'Shares: 2×£7=£14, 3×£7=£21, 7×£7=£49.',
+          ],
+          answer: '£14, £21, £49',
+        },
+      },
+      {
+        heading: 'Combining ratios',
+        body: "If you know a:b and b:c, you can find a:b:c — scale both ratios so the value for b matches in each.",
+        example: {
+          question: 'a:b = 2:3 and b:c = 4:5. Find a:b:c.',
+          working: [
+            'Scale a:b so b=12: multiply by 4 → a:b = 8:12.',
+            'Scale b:c so b=12: multiply by 3 → b:c = 12:15.',
+            'Now both have b=12, so combine: a:b:c = 8:12:15.',
+          ],
+          answer: '8:12:15',
+        },
+      },
+    ],
+    keyFacts: [
+      'Simplify a ratio by dividing every part by their highest common factor.',
+      '"Parts" method: total parts → value of 1 part → value of each share.',
+      'To combine two ratios, scale them so the shared quantity matches.',
+    ],
+  },
+
+  {
+    id: 'scale-factors',
+    title: 'Scale Factors',
+    icon: '🔎',
+    category: 'Ratio and Proportion',
+    summary: 'How much bigger or smaller a shape or drawing is compared to the original.',
+    sections: [
+      {
+        heading: 'What is a scale factor?',
+        body: "A scale factor tells you how many times bigger (or smaller) an enlarged shape is compared to the original. Multiply every length by the scale factor to find the new lengths.",
+        example: {
+          question: 'A rectangle with sides 4cm and 6cm is enlarged by a scale factor of 3. Find the new dimensions.',
+          working: ['Multiply each side by 3: 4×3=12cm, 6×3=18cm.'],
+          answer: '12cm by 18cm',
+        },
+      },
+      {
+        heading: 'Scale factors less than 1',
+        body: "A scale factor between 0 and 1 makes the shape smaller (a reduction), even though it's still called a 'scale factor'.",
+        example: {
+          question: 'A photo 20cm wide is reduced by a scale factor of 0.5. How wide is the copy?',
+          working: ['Multiply by the scale factor: 20 × 0.5 = 10cm.'],
+          answer: '10cm',
+        },
+      },
+      {
+        heading: 'Map and model scales',
+        body: "Scales are often written as a ratio, like 1:25000 on a map. This means 1 unit on the map represents 25000 of the same unit in real life.",
+        example: {
+          question: 'A map has a scale of 1:25000. A distance on the map is 6cm. Find the real distance in km.',
+          working: [
+            'Real distance = 6 × 25000 = 150000cm.',
+            '150000cm = 1500m = 1.5km.',
+          ],
+          answer: '1.5km',
+        },
+      },
+    ],
+    keyFacts: [
+      'Scale factor > 1: the shape gets bigger. Scale factor between 0 and 1: the shape gets smaller.',
+      'Multiply every length by the scale factor to enlarge or reduce a shape.',
+      'A map scale like 1:25000 means 1 unit on the map = 25000 of that unit in real life.',
+    ],
+  },
+
+  // =========================================================================
+  // GEOMETRY AND MEASURES
+  // =========================================================================
+  {
     id: '2d-shapes',
     title: '2D Shapes',
     icon: '🔺',
-    category: 'Geometry',
+    category: 'Geometry and Measures',
     summary: 'Naming flat shapes and knowing what makes each one special.',
     diagram: 'shapes-2d',
     sections: [
@@ -344,7 +885,7 @@ export const TOPICS = [
     id: '3d-shapes',
     title: '3D Shapes',
     icon: '📦',
-    category: 'Geometry',
+    category: 'Geometry and Measures',
     summary: 'Solid shapes with faces, edges and vertices — and how to count them.',
     diagram: 'shapes-3d',
     sections: [
@@ -369,12 +910,12 @@ export const TOPICS = [
         heading: 'Volume of a cuboid, cube and cylinder',
         body: "Volume of a cuboid = length × width × height. For a cube, that's just side³. Volume of a cylinder = π × radius² × height.",
         example: {
-          question: 'Find the volume of a cylinder with radius 3cm and height 10cm, in terms of π.',
+          question: 'Find the volume of a cuboid measuring 5cm by 4cm by 3cm.',
           working: [
-            'Volume = π × r² × h.',
-            'π × 3² × 10 = π × 9 × 10 = 90π cm³.',
+            'Volume = length × width × height.',
+            '5 × 4 × 3 = 60cm³.',
           ],
-          answer: '90π cm³',
+          answer: '60cm³',
         },
       },
     ],
@@ -389,7 +930,7 @@ export const TOPICS = [
     id: 'pythagoras-theorem',
     title: "Pythagoras' Theorem",
     icon: '📐',
-    category: 'Geometry',
+    category: 'Geometry and Measures',
     summary: 'Finding a missing side of a right-angled triangle.',
     diagram: 'pythagoras',
     sections: [
@@ -434,7 +975,7 @@ export const TOPICS = [
     id: 'area-perimeter',
     title: 'Area & Perimeter',
     icon: '📏',
-    category: 'Geometry',
+    category: 'Geometry and Measures',
     summary: 'The distance around a shape versus the space it covers.',
     sections: [
       {
@@ -447,12 +988,24 @@ export const TOPICS = [
         },
       },
       {
-        heading: 'Area: the space a shape covers',
-        body: "Rectangle: Area = length × width. Triangle: Area = ½ × base × height. Circle: Area = π × radius².",
+        heading: 'Area of triangles and parallelograms',
+        body: "Triangle: Area = ½ × base × height. Parallelogram: Area = base × height (using the perpendicular height, not the slanted side).",
         example: {
-          question: 'Find the area of a triangle with base 10cm and height 6cm.',
-          working: ['Area = ½ × base × height = ½ × 10 × 6 = 30cm².'],
-          answer: '30cm²',
+          question: 'Find the area of a triangle with base 10cm and height 6cm, and a parallelogram with base 8cm and height 5cm.',
+          working: [
+            'Triangle: Area = ½ × base × height = ½ × 10 × 6 = 30cm².',
+            'Parallelogram: Area = base × height = 8 × 5 = 40cm².',
+          ],
+          answer: '30cm² and 40cm²',
+        },
+      },
+      {
+        heading: 'Area of a rectangle and circle',
+        body: "Rectangle: Area = length × width. Circle: Area = π × radius².",
+        example: {
+          question: 'Find the area of a circle with radius 7cm. Use π = 22/7.',
+          working: ['Area = π × r² = (22/7) × 7² = (22/7) × 49 = 154cm².'],
+          answer: '154cm²',
         },
       },
       {
@@ -470,57 +1023,221 @@ export const TOPICS = [
     ],
     keyFacts: [
       'Perimeter is measured in a single unit of length (cm, m). Area is measured in square units (cm², m²).',
-      'Rectangle area = length × width. Triangle area = ½ × base × height.',
+      'Rectangle area = length × width. Triangle area = ½ × base × height. Parallelogram area = base × height.',
       'Similar shapes: side ratio a:b gives area ratio a²:b².',
     ],
   },
 
   {
-    id: 'percentages',
-    title: 'Percentages',
-    icon: '％',
-    category: 'Number',
-    summary: '"Per cent" means "out of 100" — how to find, increase, decrease and reverse them.',
+    id: 'angle-rules',
+    title: 'Angle Rules',
+    icon: '📏',
+    category: 'Geometry and Measures',
+    summary: 'The key angle facts for straight lines, points, and triangles.',
+    diagram: 'angles',
     sections: [
       {
-        heading: 'What percentages mean',
-        body: "A percentage is just a fraction out of 100. 50% = 50/100 = 1/2 = 0.5. To convert a fraction or decimal to a percentage, multiply by 100.",
-      },
-      {
-        heading: 'Finding a percentage of an amount',
-        body: "Convert the percentage to a decimal (divide by 100), then multiply.",
+        heading: 'Angles on a straight line',
+        body: "Angles on a straight line always add up to 180°.",
         example: {
-          question: 'Find 15% of £45.',
-          working: ['15% = 0.15.', '0.15 × 45 = £6.75.'],
-          answer: '£6.75',
-        },
-      },
-      {
-        heading: 'Percentage increase and decrease',
-        body: "To increase by a percentage, multiply by (1 + the percentage as a decimal). To decrease, multiply by (1 − the percentage as a decimal).",
-        example: {
-          question: 'Tyger jumps 20% further than Newton. Newton jumps 400cm. How far does Tyger jump?',
-          working: ['Increase multiplier: 1 + 0.20 = 1.20.', '400 × 1.20 = 480cm.'],
-          answer: '480cm',
-        },
-      },
-      {
-        heading: 'Reverse percentages (working backwards)',
-        body: "If you're told the amount left AFTER a percentage change, and asked for the ORIGINAL amount, divide instead of multiplying.",
-        example: {
-          question: 'Sally spends 15% on food and 35% on rent, leaving £350. What was her budget?',
+          question: 'Two angles on a straight line are 65° and x°. Find x.',
           working: [
-            'Spent so far: 15%+35%=50%, so the remaining 50% is £350.',
-            'Whole budget = 350 ÷ 0.5 = £700.',
+            'Angles on a straight line sum to 180°.',
+            'x = 180 − 65 = 115°.',
           ],
-          answer: '£700',
+          answer: '115°',
+        },
+      },
+      {
+        heading: 'Angles around a point',
+        body: "Angles that meet at a single point (all the way around) add up to 360°.",
+        example: {
+          question: 'Three angles meeting at a point are 110°, 140° and x°. Find x.',
+          working: [
+            'Angles around a point sum to 360°.',
+            'x = 360 − 110 − 140 = 110°.',
+          ],
+          answer: '110°',
+        },
+      },
+      {
+        heading: 'Vertically opposite angles',
+        body: "When two straight lines cross, the angles opposite each other (across the crossing point) are always equal.",
+      },
+      {
+        heading: 'Angles in a triangle',
+        body: "The three interior angles of any triangle always add up to 180°.",
+        example: {
+          question: 'A triangle has angles 50° and 70°. Find the third angle.',
+          working: [
+            'Angles in a triangle sum to 180°.',
+            'Third angle = 180 − 50 − 70 = 60°.',
+          ],
+          answer: '60°',
         },
       },
     ],
     keyFacts: [
-      '"Per cent" = "out of 100". 50% = 1/2 = 0.5.',
-      'Percentage of an amount: convert to a decimal, then multiply.',
-      'Reverse percentage: divide by the decimal that the remaining amount represents.',
+      'Angles on a straight line: sum to 180°.',
+      'Angles around a point: sum to 360°.',
+      'Angles in a triangle: sum to 180°. Vertically opposite angles are equal.',
+    ],
+  },
+
+  // =========================================================================
+  // STATISTICS AND PROBABILITY
+  // =========================================================================
+  {
+    id: 'probability',
+    title: 'Probability',
+    icon: '🎲',
+    category: 'Statistics and Probability',
+    summary: 'How likely something is to happen, from impossible (0) to certain (1).',
+    diagram: 'probability-scale',
+    sections: [
+      {
+        heading: 'The probability scale',
+        body: "Probability is measured from 0 (impossible) to 1 (certain). It can be written as a fraction, decimal or percentage. A probability of 1/2 (or 0.5, or 50%) means an event is just as likely to happen as not.",
+      },
+      {
+        heading: 'Calculating a simple probability',
+        body: "P(event) = number of favourable outcomes ÷ total number of possible outcomes.",
+        example: {
+          question: 'A bag has 3 green, 5 yellow and 2 red counters. What is the probability of picking red?',
+          working: [
+            'Total counters: 3+5+2=10.',
+            'Favourable outcomes (red): 2.',
+            'P(red) = 2/10 = 1/5.',
+          ],
+          answer: '1/5',
+        },
+      },
+      {
+        heading: 'Combined independent events',
+        body: "For two independent events (one doesn't affect the other), multiply their probabilities together to find the probability of both happening.",
+        example: {
+          question: 'A die is rolled twice. What is the probability of rolling a 6 both times?',
+          working: [
+            'P(6 on one roll) = 1/6.',
+            'The rolls are independent, so multiply: 1/6 × 1/6 = 1/36.',
+          ],
+          answer: '1/36',
+        },
+      },
+      {
+        heading: 'Without replacement',
+        body: "If items are removed and not put back, the total (and sometimes the favourable count) changes for the next pick.",
+        example: {
+          question: 'A bag has 3 red and 4 blue balls. Two are drawn without replacement. Find P(both red).',
+          working: [
+            'P(1st is red) = 3/7.',
+            'After removing one red, 2 red and 6 total remain: P(2nd is red) = 2/6.',
+            'Multiply: 3/7 × 2/6 = 6/42 = 1/7.',
+          ],
+          answer: '1/7',
+        },
+      },
+    ],
+    keyFacts: [
+      'All probabilities are between 0 (impossible) and 1 (certain).',
+      'P(event) = favourable outcomes ÷ total outcomes.',
+      'Independent events: multiply the probabilities.',
+      '"Not happening": P(not A) = 1 − P(A).',
+    ],
+  },
+
+  {
+    id: 'averages',
+    title: 'Averages: Mean, Median & Mode',
+    icon: '📊',
+    category: 'Statistics and Probability',
+    summary: 'Three different ways to describe the "typical" value in a set of data, plus the range.',
+    sections: [
+      {
+        heading: 'Mean',
+        body: "The mean is what most people call the 'average'. Add up all the values, then divide by how many values there are.",
+        example: {
+          question: 'Find the mean of: 4, 7, 9, 12, 8',
+          working: [
+            'Add the values: 4+7+9+12+8=40.',
+            'Divide by how many there are (5): 40÷5=8.',
+          ],
+          answer: '8',
+        },
+      },
+      {
+        heading: 'Median',
+        body: "The median is the middle value when the data is arranged in order. If there are two middle values (an even number of values), the median is halfway between them.",
+        example: {
+          question: 'Find the median of: 3, 9, 5, 1, 7',
+          working: [
+            'Arrange in order: 1, 3, 5, 7, 9.',
+            'The middle value is 5.',
+          ],
+          answer: '5',
+        },
+      },
+      {
+        heading: 'Mode',
+        body: "The mode is the value that appears most often. A set of data can have more than one mode, or no mode at all if every value is different.",
+        example: {
+          question: 'Find the mode of: 2, 4, 4, 6, 7, 4, 9',
+          working: ['4 appears three times — more than any other value.'],
+          answer: '4',
+        },
+      },
+      {
+        heading: 'Range',
+        body: "The range measures how spread out the data is. Range = highest value − lowest value.",
+        example: {
+          question: 'Find the range of: 3, 9, 5, 1, 7',
+          working: [
+            'Highest value: 9. Lowest value: 1.',
+            'Range = 9 − 1 = 8.',
+          ],
+          answer: '8',
+        },
+      },
+    ],
+    keyFacts: [
+      'Mean: add up all the values, divide by how many there are.',
+      'Median: the middle value once the data is in order.',
+      'Mode: the most frequent value. Range: highest minus lowest.',
+    ],
+  },
+
+  {
+    id: 'charts-graphs',
+    title: 'Interpreting Charts & Graphs',
+    icon: '📈',
+    category: 'Statistics and Probability',
+    summary: 'Reading and understanding pie charts, bar charts and scatter graphs.',
+    sections: [
+      {
+        heading: 'Bar charts',
+        body: "A bar chart uses bars to compare amounts across different categories. The height (or length) of each bar shows its value — read it against the scale on the axis.",
+      },
+      {
+        heading: 'Pie charts',
+        body: "A pie chart shows how a total is split into categories, using slices of a circle. The whole circle represents 360° (the total). To find the angle for a category, work out its fraction of the total and multiply by 360°.",
+        example: {
+          question: 'In a survey of 90 people, 30 chose football. What angle represents football on a pie chart?',
+          working: [
+            'Fraction choosing football: 30/90=1/3.',
+            'Angle = 1/3 × 360° = 120°.',
+          ],
+          answer: '120°',
+        },
+      },
+      {
+        heading: 'Scatter graphs',
+        body: "A scatter graph plots pairs of related values as points, to see if there's a connection (correlation) between them. Points trending upward from left to right show positive correlation; points trending downward show negative correlation; points with no pattern show no correlation. A 'line of best fit' is a straight line drawn through the middle of the points to show the trend.",
+      },
+    ],
+    keyFacts: [
+      'Bar chart: compare amounts by bar height/length.',
+      'Pie chart: the whole circle (360°) represents the total; angle = fraction of total × 360°.',
+      'Scatter graph: shows correlation between two sets of data — positive, negative, or none.',
     ],
   },
 ];

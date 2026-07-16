@@ -1703,6 +1703,17 @@ button {
   stroke-width: 1.5;
 }
 
+.diagram-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.diagram-point {
+  fill: var(--accent);
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
 .diagram-shape {
   fill: var(--accent-soft);
   stroke: var(--accent);

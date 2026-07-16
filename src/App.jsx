@@ -130,12 +130,51 @@ function PythagorasDiagram() {
   );
 }
 
+function CoordinatesDiagram() {
+  const originX = 40, originY = 150, unit = 30;
+  const pointX = originX + 3 * unit;
+  const pointY = originY - 2 * unit;
+  return (
+    <svg viewBox="0 0 300 180" className="topic-diagram">
+      {[0, 1, 2, 3, 4, 5].map(x => (
+        <line key={`v${x}`} x1={originX + x * unit} y1="10" x2={originX + x * unit} y2="160" className="diagram-grid" />
+      ))}
+      {[0, 1, 2, 3, 4].map(y => (
+        <line key={`h${y}`} x1="10" y1={originY - y * unit} x2="280" y2={originY - y * unit} className="diagram-grid" />
+      ))}
+      <line x1="10" y1={originY} x2="280" y2={originY} className="diagram-axis" />
+      <line x1={originX} y1="10" x2={originX} y2="160" className="diagram-axis" />
+      <text x="286" y={originY + 4} className="diagram-label">x</text>
+      <text x={originX - 6} y="10" className="diagram-label">y</text>
+      <text x={originX - 8} y={originY + 16} textAnchor="end" className="diagram-label">0</text>
+      <circle cx={pointX} cy={pointY} r="5" className="diagram-point" />
+      <text x={pointX + 10} y={pointY - 8} className="diagram-label">(3, 2)</text>
+    </svg>
+  );
+}
+
+function AnglesDiagram() {
+  const cx = 150, cy = 90;
+  return (
+    <svg viewBox="0 0 300 180" className="topic-diagram">
+      <line x1="20" y1={cy} x2="280" y2={cy} className="diagram-axis" />
+      <line x1={cx - 65} y1={cy + 65} x2={cx + 65} y2={cy - 65} className="diagram-axis" />
+      <text x={cx + 32} y={cy - 22} textAnchor="middle" className="diagram-label">a</text>
+      <text x={cx - 40} y={cy - 22} textAnchor="middle" className="diagram-label">b</text>
+      <text x={cx - 32} y={cy + 32} textAnchor="middle" className="diagram-label">c</text>
+      <text x={cx + 40} y={cy + 32} textAnchor="middle" className="diagram-label">d</text>
+    </svg>
+  );
+}
+
 const DIAGRAMS = {
   sequence: SequenceDiagram,
   'probability-scale': ProbabilityScaleDiagram,
   'shapes-2d': Shapes2DDiagram,
   'shapes-3d': Shapes3DDiagram,
   pythagoras: PythagorasDiagram,
+  coordinates: CoordinatesDiagram,
+  angles: AnglesDiagram,
 };
 
 function TopicDetail({ topic, onBack }) {

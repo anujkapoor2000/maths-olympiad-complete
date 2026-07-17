@@ -57,6 +57,14 @@ async function initializeDB() {
       );
     `);
 
+    // A child's default Year Level ('year6'/'year7'/'year8'/'olympiad'/
+    // 'kangaroo') and difficulty tier ('easy'/'medium'/'hard'), chosen at
+    // signup and editable later from Settings. Nullable so existing accounts
+    // created before this column existed just fall back to the app's
+    // hard-coded defaults (year6/medium).
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS year_group VARCHAR(20);`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_level VARCHAR(20);`);
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS questions (
         id SERIAL PRIMARY KEY,
@@ -3814,13 +3822,23 @@ async function checkComboBadge(userId, comboId, prerequisiteIds) {
   return awardBadge(userId, comboId);
 }
 
+const YEAR_GROUPS = ['year6', 'year7', 'year8', 'olympiad', 'kangaroo'];
+const PREFERRED_LEVELS = ['easy', 'medium', 'hard'];
+
 // Authentication endpoints
 app.post('/api/auth/register', async (req, res) => {
-  const { username, password, name, type } = req.body;
+  const { username, password, name, type, year_group, preferred_level } = req.body;
+  if (!username || !password || !name) {
+    return res.status(400).json({ error: 'Name, username and password are required.' });
+  }
+  const yearGroup = YEAR_GROUPS.includes(year_group) ? year_group : null;
+  const preferredLevel = PREFERRED_LEVELS.includes(preferred_level) ? preferred_level : null;
   try {
     const result = await pool.query(
-      'INSERT INTO users (username, password, name, type) VALUES ($1, $2, $3, $4) RETURNING id, username, name, type',
-      [username, password, name, type]
+      `INSERT INTO users (username, password, name, type, year_group, preferred_level)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, username, name, type, year_group, preferred_level`,
+      [username, password, name, type, yearGroup, preferredLevel]
     );
 
     await pool.query(
@@ -3828,6 +3846,29 @@ app.post('/api/auth/register', async (req, res) => {
       [result.rows[0].id]
     );
 
+    res.json(result.rows[0]);
+  } catch (err) {
+    if (err.code === '23505') {
+      return res.status(400).json({ error: 'That username is already taken.' });
+    }
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/preferences', async (req, res) => {
+  const { user_id, year_group, preferred_level } = req.body;
+  if (!YEAR_GROUPS.includes(year_group) || !PREFERRED_LEVELS.includes(preferred_level)) {
+    return res.status(400).json({ error: 'Invalid year group or level.' });
+  }
+  try {
+    const result = await pool.query(
+      `UPDATE users SET year_group = $1, preferred_level = $2 WHERE id = $3
+       RETURNING id, username, name, type, year_group, preferred_level`,
+      [year_group, preferred_level, user_id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
     res.json(result.rows[0]);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -3838,7 +3879,7 @@ app.post('/api/auth/login', async (req, res) => {
   const { username, password } = req.body;
   try {
     const result = await pool.query(
-      'SELECT id, username, name, type, total_coins FROM users WHERE username = $1 AND password = $2',
+      'SELECT id, username, name, type, total_coins, year_group, preferred_level FROM users WHERE username = $1 AND password = $2',
       [username, password]
     );
 

@@ -342,6 +342,10 @@ export default function App() {
   const [topicMastery, setTopicMastery] = useState([]); // [{ topic_id, correct, target, mastered, viewed }]
   const [dailyActivity, setDailyActivity] = useState([]); // [{ date, papers_completed, total_correct, total_questions, coins_earned }]
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+  const [authView, setAuthView] = useState('login'); // 'login' | 'signup'
+  const [signupForm, setSignupForm] = useState({ name: '', username: '', password: '', year_group: 'year6', preferred_level: 'medium' });
+  const [signupStatus, setSignupStatus] = useState(null); // null | 'submitting' | { error }
+  const [preferencesStatus, setPreferencesStatus] = useState(null); // null | 'saving' | 'saved' | { error }
   const [difficulty, setDifficulty] = useState('year6');
   const [level, setLevel] = useState('medium');
   const [progress, setProgress] = useState(null);
@@ -540,6 +544,8 @@ export default function App() {
       setPage(response.data.type === 'child' ? 'challenge' : 'parentDash');
       setLoginForm({ username: '', password: '' });
       if (response.data.type === 'child') {
+        setDifficulty(response.data.year_group || 'year6');
+        setLevel(response.data.preferred_level || 'medium');
         loadBadges(response.data.id);
         loadFavorites(response.data.id);
       }
@@ -553,6 +559,45 @@ export default function App() {
       }
     } catch (err) {
       alert('Login failed: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const handleSignup = async (e) => {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+    const name = signupForm.name.trim();
+    const username = signupForm.username.trim();
+    if (!name || !username || !signupForm.password) return;
+    setSignupStatus('submitting');
+    try {
+      await axios.post(`${API_URL}/api/auth/register`, {
+        name,
+        username,
+        password: signupForm.password,
+        type: 'child',
+        year_group: signupForm.year_group,
+        preferred_level: signupForm.preferred_level
+      });
+      await handleLogin(null, { username, password: signupForm.password });
+      setSignupForm({ name: '', username: '', password: '', year_group: 'year6', preferred_level: 'medium' });
+      setSignupStatus(null);
+      setAuthView('login');
+    } catch (err) {
+      setSignupStatus({ error: err.response?.data?.error || 'Could not create account.' });
+    }
+  };
+
+  const handleSavePreferences = async () => {
+    setPreferencesStatus('saving');
+    try {
+      await axios.post(`${API_URL}/api/auth/preferences`, {
+        user_id: currentUser.id,
+        year_group: difficulty,
+        preferred_level: level
+      });
+      setPreferencesStatus('saved');
+      setTimeout(() => setPreferencesStatus(null), 2500);
+    } catch (err) {
+      setPreferencesStatus({ error: err.response?.data?.error || 'Could not save settings.' });
     }
   };
 
@@ -945,6 +990,84 @@ export default function App() {
   };
 
   if (!currentUser) {
+    if (authView === 'signup') {
+      return (
+        <div className="login-container">
+          <div className="login-card">
+            <h1>📚 Create Your Account</h1>
+            <p>Set up your profile to start practising</p>
+
+            <form onSubmit={handleSignup} className="login-form">
+              <input
+                type="text"
+                placeholder="Your name"
+                value={signupForm.name}
+                onChange={(e) => setSignupForm({ ...signupForm, name: e.target.value })}
+                required
+              />
+              <input
+                type="text"
+                placeholder="Choose a username"
+                value={signupForm.username}
+                onChange={(e) => setSignupForm({ ...signupForm, username: e.target.value })}
+                required
+              />
+              <input
+                type="password"
+                placeholder="Choose a password"
+                value={signupForm.password}
+                onChange={(e) => setSignupForm({ ...signupForm, password: e.target.value })}
+                required
+              />
+
+              <div className="difficulty-selector">
+                <label>Year Level:</label>
+                {['year6', 'year7', 'year8', 'olympiad', 'kangaroo'].map(y => (
+                  <label key={y}>
+                    <input
+                      type="radio"
+                      value={y}
+                      checked={signupForm.year_group === y}
+                      onChange={(e) => setSignupForm({ ...signupForm, year_group: e.target.value })}
+                    />
+                    {difficultyLabel(y)}
+                  </label>
+                ))}
+              </div>
+
+              <div className="difficulty-selector">
+                <label>Starting Level:</label>
+                {['easy', 'medium', 'hard'].map(lv => (
+                  <label key={lv}>
+                    <input
+                      type="radio"
+                      value={lv}
+                      checked={signupForm.preferred_level === lv}
+                      onChange={(e) => setSignupForm({ ...signupForm, preferred_level: e.target.value })}
+                    />
+                    {levelLabel(lv)}
+                  </label>
+                ))}
+              </div>
+              <p className="signup-hint">Don't worry — you can switch to a harder or easier level anytime in Settings.</p>
+
+              {signupStatus?.error && <p className="settings-error-msg">{signupStatus.error}</p>}
+
+              <button type="submit" disabled={signupStatus === 'submitting'}>
+                {signupStatus === 'submitting' ? 'Creating account…' : 'Create Account'}
+              </button>
+            </form>
+
+            <div className="demo-accounts">
+              <button className="demo-btn" onClick={() => { setAuthView('login'); setSignupStatus(null); }}>
+                ← Back to login
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="login-container">
         <div className="login-card">
@@ -968,6 +1091,10 @@ export default function App() {
             />
             <button type="submit">Login</button>
           </form>
+
+          <button className="signup-link" onClick={() => setAuthView('signup')}>
+            New here? Create a child account →
+          </button>
 
           <div className="demo-accounts">
             <h3>Demo Accounts</h3>
@@ -1068,6 +1195,12 @@ export default function App() {
             onClick={() => setPage('formulas')}
           >
             📐 Formulas
+          </button>
+          <button
+            className={page === 'settings' ? 'active' : ''}
+            onClick={() => setPage('settings')}
+          >
+            ⚙️ Settings
           </button>
         </nav>
 
@@ -1549,6 +1682,53 @@ export default function App() {
                   </div>
                 ));
               })()}
+            </div>
+          )}
+
+          {page === 'settings' && (
+            <div className="challenge-container">
+              <h2>⚙️ Settings</h2>
+              <p className="learn-intro">
+                Change your Year Level or difficulty anytime — want to try something harder, or ease off a bit? Update it here and it becomes your starting point every time you log in. You can still pick a different level for a one-off paper on the Challenge tab.
+              </p>
+
+              <div className="difficulty-selector">
+                <label>Year Level:</label>
+                {['year6', 'year7', 'year8', 'olympiad', 'kangaroo'].map(y => (
+                  <label key={y}>
+                    <input
+                      type="radio"
+                      value={y}
+                      checked={difficulty === y}
+                      onChange={(e) => setDifficulty(e.target.value)}
+                    />
+                    {difficultyLabel(y)}
+                  </label>
+                ))}
+              </div>
+
+              <div className="difficulty-selector">
+                <label>Level:</label>
+                {['easy', 'medium', 'hard'].map(lv => (
+                  <label key={lv}>
+                    <input
+                      type="radio"
+                      value={lv}
+                      checked={level === lv}
+                      onChange={(e) => setLevel(e.target.value)}
+                    />
+                    {levelLabel(lv)}
+                  </label>
+                ))}
+              </div>
+
+              <button className="btn-primary" onClick={handleSavePreferences} disabled={preferencesStatus === 'saving'}>
+                {preferencesStatus === 'saving' ? 'Saving…' : 'Save as my default'}
+              </button>
+              {preferencesStatus === 'saved' && (
+                <p className="settings-saved-msg">✅ Saved — you'll start at {difficultyLabel(difficulty)} · {levelLabel(level)} next time you log in.</p>
+              )}
+              {preferencesStatus?.error && <p className="settings-error-msg">{preferencesStatus.error}</p>}
             </div>
           )}
         </div>

@@ -5,6 +5,7 @@ const { Pool } = require('pg');
 const multer = require('multer');
 const path = require('path');
 const { BADGES, BADGE_MAP, STREAK_THRESHOLDS, QUESTION_TIME_BY_LEVEL } = require('./badges');
+const { gradeAnswer } = require('./aiAnswerReview');
 
 const app = express();
 app.use(cors());
@@ -293,6 +294,9 @@ async function initializeDB() {
         created_at TIMESTAMP DEFAULT NOW()
       );
     `);
+    await pool.query(`ALTER TABLE answer_log ADD COLUMN IF NOT EXISTS user_answer TEXT;`);
+    await pool.query(`ALTER TABLE answer_log ADD COLUMN IF NOT EXISTS expected_answer TEXT;`);
+    await pool.query(`ALTER TABLE answer_log ADD COLUMN IF NOT EXISTS review_method VARCHAR(20);`);
 
     // Seed the demo accounts (idempotent) so the demo login buttons work out of
     // the box. seed.sql only loads questions, not users.
@@ -3948,6 +3952,47 @@ app.get('/api/questions/:difficulty', async (req, res) => {
   }
 });
 
+// Grade a child answer with normalization rules and optional AI review.
+app.post('/api/answers/check', async (req, res) => {
+  const { user_answer, question_id, expected_answer, question_text, solution, source } = req.body;
+  try {
+    let expected = expected_answer;
+    let text = question_text;
+    let workedSolution = solution;
+    let questionSource = source;
+
+    if (question_id) {
+      const q = await pool.query(
+        'SELECT answer, text, solution, source FROM questions WHERE id = $1',
+        [question_id]
+      );
+      if (!q.rows[0]) {
+        return res.status(404).json({ error: 'Question not found' });
+      }
+      expected = q.rows[0].answer;
+      text = q.rows[0].text;
+      workedSolution = q.rows[0].solution;
+      questionSource = q.rows[0].source;
+    }
+
+    if (expected === undefined || expected === null) {
+      return res.status(400).json({ error: 'expected_answer or question_id is required' });
+    }
+
+    const grade = await gradeAnswer({
+      userAnswer: user_answer,
+      expectedAnswer: expected,
+      questionText: text,
+      solution: workedSolution,
+      source: questionSource,
+    });
+    res.json({ correct: grade.correct, method: grade.method, expected });
+  } catch (err) {
+    console.error('Error checking answer:', err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // Progress endpoints
 // outcome: 'correct' | 'incorrect' | 'skipped'. Coin amounts come from the
 // configurable coin_settings row so parents can tune the economy. Correct
@@ -3955,8 +4000,38 @@ app.get('/api/questions/:difficulty', async (req, res) => {
 // (question_level: 'easy' | 'medium' | 'hard'), defaulting to the medium
 // rate for untagged (legacy) questions.
 app.post('/api/progress/update', async (req, res) => {
-  const { user_id, outcome, difficulty, question_text, question_level, question_id } = req.body;
+  const {
+    user_id,
+    outcome: clientOutcome,
+    difficulty,
+    question_text,
+    question_level,
+    question_id,
+    user_answer,
+  } = req.body;
   try {
+    let outcome = clientOutcome;
+    let reviewMethod = clientOutcome === 'skipped' ? 'skipped' : 'client';
+    let expectedAnswer = null;
+
+    if (clientOutcome !== 'skipped' && question_id && user_answer !== undefined) {
+      const q = await pool.query(
+        'SELECT answer, text, solution, source FROM questions WHERE id = $1',
+        [question_id]
+      );
+      if (q.rows[0]) {
+        expectedAnswer = q.rows[0].answer;
+        const grade = await gradeAnswer({
+          userAnswer: user_answer,
+          expectedAnswer: expectedAnswer,
+          questionText: q.rows[0].text,
+          solution: q.rows[0].solution,
+          source: q.rows[0].source,
+        });
+        outcome = grade.correct ? 'correct' : 'incorrect';
+        reviewMethod = grade.method;
+      }
+    }
     const settingsResult = await pool.query('SELECT * FROM coin_settings WHERE id = 1');
     const settings = settingsResult.rows[0];
 
@@ -4033,9 +4108,18 @@ app.post('/api/progress/update', async (req, res) => {
     );
 
     await pool.query(
-      `INSERT INTO answer_log (user_id, difficulty, question_text, outcome, coins_delta)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [user_id, difficulty || null, question_text || null, outcome || null, actualDelta]
+      `INSERT INTO answer_log (user_id, difficulty, question_text, outcome, coins_delta, user_answer, expected_answer, review_method)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        user_id,
+        difficulty || null,
+        question_text || null,
+        outcome || null,
+        actualDelta,
+        user_answer ?? null,
+        expectedAnswer,
+        reviewMethod,
+      ]
     );
 
     // Topic mastery: log the first time this exact question is answered
@@ -4052,7 +4136,15 @@ app.post('/api/progress/update', async (req, res) => {
       }
     }
 
-    res.json({ ...progress.rows[0], coinsDelta: actualDelta, newBadges });
+    res.json({
+      ...progress.rows[0],
+      coinsDelta: actualDelta,
+      newBadges,
+      outcome,
+      correct: outcome === 'correct',
+      reviewMethod,
+      expectedAnswer,
+    });
   } catch (err) {
     console.error('Error updating progress:', err);
     res.status(400).json({ error: err.message });

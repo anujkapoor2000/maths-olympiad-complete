@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './App.css';
+import { compareAnswer } from './answerCheck.js';
 import { BADGES } from './badges';
 import { TOPICS, TOPIC_MAP, TOPIC_CATEGORIES } from './topics';
 import { FORMULAS } from './formulas';
+import AnswerInput from './AnswerInput';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 const PAPER_QUESTIONS = 15;
@@ -603,19 +605,24 @@ export default function App() {
 
   const handleSubmitAnswer = async () => {
     if (!currentQuestion || answered) return;
-    const expected = (currentQuestion.answer ?? '').toString().toLowerCase().trim();
-    const correct = userAnswer.toLowerCase().trim() === expected;
+    const localCorrect = compareAnswer(userAnswer, currentQuestion.answer, {
+      questionText: currentQuestion.text,
+      source: currentQuestion.source,
+      expectedAnswer: currentQuestion.answer,
+    });
     try {
       const response = await axios.post(`${API_URL}/api/progress/update`, {
         user_id: currentUser.id,
-        outcome: correct ? 'correct' : 'incorrect',
+        outcome: localCorrect ? 'correct' : 'incorrect',
         difficulty,
         question_text: currentQuestion.text,
         question_level: currentQuestion.level,
-        question_id: currentQuestion.id
+        question_id: currentQuestion.id,
+        user_answer: userAnswer,
       });
+      const correct = response.data.correct ?? (response.data.outcome === 'correct');
       const coinsDelta = response.data.coinsDelta ?? 0;
-      setResult({ correct, expected: currentQuestion.answer, coinsDelta });
+      setResult({ correct, expected: currentQuestion.answer, coinsDelta, reviewMethod: response.data.reviewMethod });
       setAnswered(true);
       setPaperResults(prev => [...prev, { correct, subject: currentQuestion.subject, topicId: currentQuestion.topic_id, coinsDelta }]);
       flashCoinToast(coinsDelta);
@@ -1349,12 +1356,11 @@ export default function App() {
                           ))}
                         </div>
                       ) : (
-                        <input
-                          type="text"
-                          placeholder="Enter your answer..."
+                        <AnswerInput
+                          question={currentQuestion}
                           value={userAnswer}
-                          onChange={(e) => setUserAnswer(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && handleSubmitAnswer()}
+                          onChange={setUserAnswer}
+                          onSubmit={handleSubmitAnswer}
                         />
                       )}
                       <button className="btn-primary" onClick={handleSubmitAnswer}>

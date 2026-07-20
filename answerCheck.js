@@ -6,6 +6,9 @@
 const TRAILING_PUNCTUATION = /[!?.]+$/;
 const MULTI_VALUE_SEPARATORS = /\s*(?:\||;|\bor\b)\s*/i;
 const ALGEBRA_CHARS = /[a-z+\-*/().^=]/i;
+const LEADING_CURRENCY = /^[£$€]\s*/;
+const TRAILING_UNITS =
+  /\s*(?:miles?|mi|kilometres?|kilometers?|km|metres?|meters?|cm|mm|millimetres?|millimeters?|millimeters|millimetres|feet|ft|inches?|in|hours?|hrs?|hr|minutes?|mins?|min|seconds?|secs?|sec|pounds?|lbs?|lb|grams?|g|kilograms?|kg|pence|pennies|coins?)\.?\s*$/i;
 
 function normalizeWhitespace(value) {
   return String(value ?? '').replace(/\s+/g, ' ').trim();
@@ -85,10 +88,38 @@ function looksLikePercentageQuestion(context = {}) {
   );
 }
 
-function compareSingle(userAnswer, expectedAnswer, context = {}) {
-  const user = basicNormalize(userAnswer);
-  const expected = basicNormalize(expectedAnswer);
+function stripUnitsAndCurrency(value) {
+  let next = basicNormalize(value);
+  next = next.replace(LEADING_CURRENCY, '');
+  while (TRAILING_UNITS.test(next)) {
+    next = next.replace(TRAILING_UNITS, '').trim();
+  }
+  return next.trim();
+}
 
+function userAnswerVariants(userAnswer) {
+  const basic = basicNormalize(userAnswer);
+  const variants = new Set([
+    basic,
+    stripUnitsAndCurrency(basic),
+    stripThousandsSeparators(stripPercent(stripUnitsAndCurrency(basic))),
+    stripThousandsSeparators(stripPercent(basic)),
+  ]);
+
+  const leading = basic.match(/^[-+]?[\d,]+(?:\.\d+)?/);
+  if (leading) {
+    variants.add(stripThousandsSeparators(leading[0]));
+  }
+
+  const embeddedNumbers = basic.match(/[-+]?[\d,]+(?:\.\d+)?/g) || [];
+  for (const number of embeddedNumbers) {
+    variants.add(stripThousandsSeparators(number));
+  }
+
+  return [...variants].filter(Boolean);
+}
+
+function compareSingleNormalized(user, expected, context, rawUserAnswer, rawExpectedAnswer) {
   if (!expected) {
     return user === expected;
   }
@@ -116,7 +147,7 @@ function compareSingle(userAnswer, expectedAnswer, context = {}) {
     return true;
   }
 
-  if (looksLikePercentageQuestion({ ...context, expectedAnswer: expectedAnswer })) {
+  if (looksLikePercentageQuestion({ ...context, expectedAnswer: rawExpectedAnswer })) {
     if (numbersEquivalent(userNoPercent, expectedNoPercent)) {
       return true;
     }
@@ -125,10 +156,20 @@ function compareSingle(userAnswer, expectedAnswer, context = {}) {
     }
   }
 
-  if (normalizeAlgebra(userAnswer) === normalizeAlgebra(expectedAnswer)) {
+  if (normalizeAlgebra(rawUserAnswer) === normalizeAlgebra(rawExpectedAnswer)) {
     return true;
   }
 
+  return false;
+}
+
+function compareSingle(userAnswer, expectedAnswer, context = {}) {
+  const expected = basicNormalize(expectedAnswer);
+  for (const variant of userAnswerVariants(userAnswer)) {
+    if (compareSingleNormalized(variant, expected, context, userAnswer, expectedAnswer)) {
+      return true;
+    }
+  }
   return false;
 }
 
@@ -203,10 +244,10 @@ function getAnswerInputConfig(question = {}) {
     case 'number':
       return {
         format,
-        placeholder: 'Enter a number (commas are OK)',
-        hint: 'Use digits only — commas and trailing .00 are fine.',
+        placeholder: 'Enter a number (e.g. 160 or 160 miles)',
+        hint: 'Use the number only — units like miles or cm are optional.',
         inputMode: 'decimal',
-        pattern: '^[-+]?\\d*(?:[,]\\d{3})*(?:\\.\\d+)?$',
+        pattern: '^[-+]?\\d*(?:[,]\\d{3})*(?:\\.\\d+)?\\s*[a-zA-Z%£$€]*$',
       };
     case 'algebra':
       return {
@@ -247,7 +288,7 @@ function sanitizeAnswerInput(value, format) {
   let next = String(value ?? '');
 
   if (format === 'number' || format === 'percentage') {
-    next = next.replace(/[^\d.,+\-%]/g, '');
+    next = next.replace(/[^\d.,+\-%a-zA-Z£$€\s]/g, '');
     const percent = next.endsWith('%');
     next = next.replace(/%/g, '');
     const parts = next.split('.');
@@ -257,7 +298,7 @@ function sanitizeAnswerInput(value, format) {
     if (percent) {
       next = `${next}%`;
     }
-    return next;
+    return next.trim();
   }
 
   if (format === 'ratio') {
@@ -282,4 +323,6 @@ module.exports = {
   parseNumeric,
   sanitizeAnswerInput,
   stripThousandsSeparators,
+  stripUnitsAndCurrency,
+  userAnswerVariants,
 };

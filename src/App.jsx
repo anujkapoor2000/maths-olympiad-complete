@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './App.css';
-import { compareAnswer } from './answerCheck.js';
+import { compareAnswer, getAnswerInputConfig, sanitizeAnswerInput } from './answerCheck.js';
 import { BADGES } from './badges';
 import { TOPICS, TOPIC_MAP, TOPIC_CATEGORIES } from './topics';
 import { FORMULAS } from './formulas';
@@ -605,7 +605,9 @@ export default function App() {
 
   const handleSubmitAnswer = async () => {
     if (!currentQuestion || answered) return;
-    const localCorrect = compareAnswer(userAnswer, currentQuestion.answer, {
+    const inputConfig = getAnswerInputConfig(currentQuestion);
+    const cleanedAnswer = sanitizeAnswerInput(userAnswer, inputConfig.format);
+    const localCorrect = compareAnswer(cleanedAnswer, currentQuestion.answer, {
       questionText: currentQuestion.text,
       source: currentQuestion.source,
       expectedAnswer: currentQuestion.answer,
@@ -618,7 +620,7 @@ export default function App() {
         question_text: currentQuestion.text,
         question_level: currentQuestion.level,
         question_id: currentQuestion.id,
-        user_answer: userAnswer,
+        user_answer: cleanedAnswer,
       });
       const correct = response.data.correct ?? (response.data.outcome === 'correct');
       const coinsDelta = response.data.coinsDelta ?? 0;

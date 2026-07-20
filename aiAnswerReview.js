@@ -11,6 +11,7 @@ function buildReviewPrompt({ questionText, expectedAnswer, userAnswer, solution 
     '- trailing ! or ?',
     '- thousand separators in numbers (12,345.00 equals 12345.00)',
     '- optional trailing % on percentage answers',
+    '- optional units such as miles, cm, kg, or £ when the expected answer is numeric',
     '- optional spaces around + or - in algebraic expressions',
     'Reject answers that are mathematically different, even if close.',
     'Reply with exactly one word: CORRECT or INCORRECT.',

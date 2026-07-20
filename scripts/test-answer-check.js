@@ -12,8 +12,14 @@ const cases = [
   ['25', '25%', { questionText: 'What percentage?' }, true],
   ['4n + 7', '4n+7', {}, true],
   ['4n+7', '4n + 7', {}, true],
+  ['160 miles', '160', { questionText: 'How far can he fly on the last day?' }, true],
+  ['160 mile', '160', {}, true],
+  ['160 Miles', '160', {}, true],
+  ['£160', '160', {}, true],
+  ['1600 - 1440 = 160', '160', {}, true],
+  ['160 miles', '160', {}, true],
   ['53', '52', {}, false],
-  ['52 cm', '52', {}, false],
+  ['52 cm', '52', {}, true],
 ];
 
 let failed = 0;
